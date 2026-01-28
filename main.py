@@ -31,6 +31,7 @@ def view_image(image: PILImage):
     _ = image_label.config(image=tk_img)
     setattr(image_label, "image", tk_img)
 
+
 # issues:
 # combine phash (global) and crop_hash (per-section) 
 # need to check what the crop_resistant_hash actually crops
