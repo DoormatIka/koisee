@@ -26,6 +26,8 @@ def imagehash_to_int(h: imagehash.ImageHash) -> int:
     return int.from_bytes(packed.tobytes(), byteorder="big")
 
 
+# todo: crop resistant hashing doesn't do anything at the moment.
+# have a flag that says what hash triggered the nearest match.
 
 class ImageHasher:
     size: int
