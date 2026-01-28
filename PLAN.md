@@ -18,6 +18,9 @@ building the index is an `O(n * log(n) * d)` operation, and querying is an `O(lo
 - `n` is the number of files
 - `d` are the dimensions of the ANN. For a (16x16) fingerprint, it will be 256.
 
+bonus features: have a bar that says how many files are finished indexing and compared to.
+use OS-specific commands for this: linux - `find . -type f | wc -l`, win - `(Get-ChildItem -Recurse -File | Measure-Object).Count`
+
 ## stage 2: optimizations
 
 1. store the ANN + a file index to re-use old calculated data.
