@@ -10,14 +10,15 @@ from PIL.Image import Image as PILImage
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
 from pathlib import Path
 
-
 import logger
+
 
 @dataclass
 class CombinedImageHash:
     path: Path
     cropped_hash: imagehash.ImageMultiHash
     hash: imagehash.ImageHash
+    pixel_count: int
 
 def imagehash_to_int(h: imagehash.ImageHash) -> int:
     arr = h.hash # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
@@ -127,8 +128,14 @@ class ImageHasher:
             img = Image.open(image_path)
             phash = self.global_phash(img)
             crophash = self.crop_resistant_hash(img)
+            width, height = img.size
 
-            return CombinedImageHash(path=image_path, hash=phash, cropped_hash=crophash), None
+            return CombinedImageHash(
+                path=image_path,
+                hash=phash,
+                cropped_hash=crophash,
+                pixel_count=width * height
+            ), None
         except (UnidentifiedImageError, OSError) as e:
             return None, str(e)
 
