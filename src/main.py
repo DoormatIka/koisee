@@ -12,7 +12,7 @@ _ = parser.add_argument("-d", "--delete", action='store_true', help="Enable auto
 def scan_from_directory(directory: Path, is_delete: bool = False): # prototype
     print(f"[START] - Parsing through {directory}")
 
-    imghasher = hasher.ImageHasher(logger=logger.MatchLogger(), size=16)
+    imghasher = hasher.ImageHasher(log=logger.MatchLogger(), size=16)
     finder = hasher.BruteForceFinder(hasher=imghasher)
 
     hashes = finder.create_hashes_from_directory(directory)

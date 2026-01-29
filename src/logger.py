@@ -1,13 +1,13 @@
 
-from typing import override
+from typing import Protocol, override
 
 
-class BlankLogger():
-    def info(self, s: str) -> None: # pyright: ignore[reportUnusedParameter]
+class BlankLogger(Protocol):
+    def info(self, s: str) -> None:
         pass
-    def warn(self, s: str) -> None: # pyright: ignore[reportUnusedParameter]
+    def warn(self, s: str) -> None:
         pass
-    def match(self, s: str) -> None: # pyright: ignore[reportUnusedParameter]
+    def match(self, s: str) -> None:
         pass
 
 class MatchLogger(BlankLogger):

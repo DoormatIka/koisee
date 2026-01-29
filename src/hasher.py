@@ -20,6 +20,55 @@ class CombinedImageHash:
     hash: imagehash.ImageHash
     pixel_count: int
 
+type ImagePair = tuple[CombinedImageHash, CombinedImageHash]
+type ImageHashResult = tuple[CombinedImageHash, None] | tuple[None, str]
+
+class ImageHasher:
+    size: int
+    log: logger.BlankLogger
+    def __init__(self, log: logger.BlankLogger, size: int = 8):
+        self.log = log
+        self.size = size
+
+    def create_hash_from_image(self, image_path: Path) -> ImageHashResult:
+        try:
+            img = Image.open(image_path)
+            phash = self.global_phash(img)
+            crophash = self.crop_resistant_hash(img)
+            width, height = img.size
+
+            return CombinedImageHash(
+                path=image_path,
+                hash=phash,
+                cropped_hash=crophash,
+                pixel_count=width * height
+            ), None
+        except (UnidentifiedImageError, OSError) as e:
+            return None, str(e)
+
+    def alpharemover(self, image: Image.Image):
+        if image.mode != 'RGBA':
+            return image
+        canvas = Image.new('RGBA', image.size, (255, 255, 255, 255))
+        canvas.paste(image, mask=image)
+        return canvas.convert('RGB')
+
+    def global_phash(self, img: PILImage):
+        img = img.convert('L').resize((self.size, self.size), Image.Resampling.NEAREST)
+
+        data = np.ascontiguousarray(img.get_flattened_data()).reshape(-1)
+        quantiles = np.arange(100)
+        quantiles_values = np.percentile(data, quantiles)
+        zdata = (np.interp(data, quantiles_values, quantiles) / 100 * 255).astype(np.uint8)
+        img.putdata(zdata)
+
+        return imagehash.phash(image=img)
+
+    def crop_resistant_hash(self, img: PILImage) -> imagehash.ImageMultiHash:
+        image = self.alpharemover(img)
+        return imagehash.crop_resistant_hash(image=image, min_segment_size=100) # pyright: ignore[reportUnknownMemberType]
+
+
 def imagehash_to_int(h: imagehash.ImageHash) -> int:
     arr = h.hash # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
     assert isinstance(arr, np.ndarray)
@@ -66,10 +115,10 @@ class BruteForceFinder:
             for future in as_completed(futures):
                 result, err = future.result()
                 if result != None:
-                    self.hasher.logger.info(f"hashing \"{result.path}\"")
+                    self.hasher.log.info(f"hashing \"{result.path}\"")
                     image_hashes.append(result)
                 else:
-                    self.hasher.logger.warn(err or "")
+                    self.hasher.log.warn(err or "")
 
         image_hashes.sort(key=lambda x: imagehash_to_int(x.hash))
 
@@ -91,7 +140,7 @@ class BruteForceFinder:
                     continue
                 img1, img2 = val
                 matching_segments, distance = img1.cropped_hash.hash_diff(img2.cropped_hash)
-                self.hasher.logger.match(
+                self.hasher.log.match(
                     f" Left: {img1.path}\n" + 
                     f"\tRight: {img2.path}\n" + 
                     f"\tGlobal Difference: {abs(img1.hash - img2.hash)}\n" +
@@ -113,52 +162,7 @@ def is_similar_image(img1: CombinedImageHash, img2: CombinedImageHash) -> ImageP
 class ANNFinder:
     pass
 
-type ImagePair = tuple[CombinedImageHash, CombinedImageHash]
-type ImageHashResult = tuple[CombinedImageHash, None] | tuple[None, str]
 
-class ImageHasher:
-    size: int
-    logger: logger.BlankLogger
-    def __init__(self, logger: logger.BlankLogger, size: int = 8):
-        self.logger = logger
-        self.size = size
 
-    def create_hash_from_image(self, image_path: Path) -> ImageHashResult:
-        try:
-            img = Image.open(image_path)
-            phash = self.global_phash(img)
-            crophash = self.crop_resistant_hash(img)
-            width, height = img.size
-
-            return CombinedImageHash(
-                path=image_path,
-                hash=phash,
-                cropped_hash=crophash,
-                pixel_count=width * height
-            ), None
-        except (UnidentifiedImageError, OSError) as e:
-            return None, str(e)
-
-    def alpharemover(self, image: Image.Image):
-        if image.mode != 'RGBA':
-            return image
-        canvas = Image.new('RGBA', image.size, (255, 255, 255, 255))
-        canvas.paste(image, mask=image)
-        return canvas.convert('RGB')
-
-    def global_phash(self, img: PILImage):
-        img = img.convert('L').resize((self.size, self.size), Image.Resampling.NEAREST)
-
-        data = np.ascontiguousarray(img.get_flattened_data()).reshape(-1)
-        quantiles = np.arange(100)
-        quantiles_values = np.percentile(data, quantiles)
-        zdata = (np.interp(data, quantiles_values, quantiles) / 100 * 255).astype(np.uint8)
-        img.putdata(zdata)
-
-        return imagehash.phash(image=img)
-
-    def crop_resistant_hash(self, img: PILImage) -> imagehash.ImageMultiHash:
-        image = self.alpharemover(img)
-        return imagehash.crop_resistant_hash(image=image, min_segment_size=100) # pyright: ignore[reportUnknownMemberType]
 
 
