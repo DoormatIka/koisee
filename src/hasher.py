@@ -38,7 +38,7 @@ class FinderInterface(Protocol):
     def get_similar_images(self, image_hashes: list[CombinedImageHash]) -> list[list[CombinedImageHash]]: ...
 
 def get_supported_extensions():
-    ext_reading = {ext for ext, fmt in Image.registered_extensions() if fmt in Image.OPEN}
+    ext_reading = {ext for ext, fmt in Image.registered_extensions().items() if fmt in Image.OPEN}
     return ext_reading
 
 class BruteForceFinder:
@@ -49,6 +49,7 @@ class BruteForceFinder:
 
     def create_hashes_from_directory(self, directory: Path) -> list[CombinedImageHash]:
         exts = get_supported_extensions()
+        print(exts)
         image_hashes: list[CombinedImageHash] = list()
 
         n_thread = os.cpu_count()
@@ -59,7 +60,7 @@ class BruteForceFinder:
         with ProcessPoolExecutor(max_workers=n_thread) as executor:
             futures: list[Future[ImageHashResult]] = list()
             for ext in exts:
-                for image_path in Path(directory).rglob(f"*.{ext}"):
+                for image_path in Path(directory).rglob(f"*{ext}"):
                     futures.append(executor.submit(self.hasher.create_hash_from_image, image_path))
 
             for future in as_completed(futures):
