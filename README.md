@@ -7,3 +7,5 @@
 ## what?
 
 This tool finds duplicate images from a folder and identifies similar ones from images you provide.
+
+It doesn't do anything clever at the moment, however there are plans to make this efficient and more user-friendly.
