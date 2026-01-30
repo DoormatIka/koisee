@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 
-import hasher
+import hashers.image
+import finders.bruteforce
 import logger
 import argparse
 
@@ -12,11 +13,11 @@ _ = parser.add_argument("-d", "--delete", action='store_true', help="Enable auto
 def scan_from_directory(directory: Path, is_delete: bool = False): # prototype
     print(f"[START] - Parsing through {directory}")
 
-    imghasher = hasher.ImageHasher(log=logger.MatchLogger(), size=16)
-    finder = hasher.BruteForceFinder(hasher=imghasher)
+    imghasher = hashers.image.ImageHasher(log=logger.MatchLogger(), size=16)
+    bf = finders.bruteforce.BruteForceFinder(hasher=imghasher)
 
-    hashes = finder.create_hashes_from_directory(directory)
-    similar_images = finder.get_similar_images(hashes)
+    hashes = bf.create_hashes_from_directory(directory)
+    similar_images = bf.get_similar_objects(hashes)
     if is_delete:
         for img1, img2 in similar_images:
             # extremely basic quality check, replace with something else later.
