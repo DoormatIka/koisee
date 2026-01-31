@@ -2,6 +2,7 @@
 import flet as ft
 import pprint
 
+from gui.components.file_picker import FilePicker
 from gui.models.image import ModelImage
 from hashers.types import CombinedImageHash
 
@@ -78,7 +79,7 @@ def flet_main(page: ft.Page):
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         controls=[
             create_pair_image([]),
-            file_picker_component(),
+            FilePicker()
         ],
     )
 
