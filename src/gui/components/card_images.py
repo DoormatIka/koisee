@@ -2,8 +2,8 @@
 from typing import Any
 import flet as ft
 
-from gui.models.image import ModelImage
 from hashers.types import CombinedImageHash
+from gui.models.image import ModelImage
 
 class ImageCardRow(ft.Container):
     content: ft.Control | None
