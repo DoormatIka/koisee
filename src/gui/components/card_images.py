@@ -1,47 +1,69 @@
 
+from typing import Any
 import flet as ft
 
 from gui.models.image import ModelImage
 from hashers.types import CombinedImageHash
 
-def toggle_delete(e: ft.Event[ft.Container], model: ModelImage):
-    is_deleted = model.toggle_delete()
-    if is_deleted:
-        e.control.border = ft.border.all(2, ft.Colors.RED)
-    else:
-        e.control.border = None
+class ImageCardRow(ft.Container):
+    content: ft.Control | None
+    padding: ft.PaddingValue | None
+    border_radius: ft.BorderRadiusValue | None
+    bgcolor: ft.ColorValue | None
 
-    e.control.update()
-
-def create_pair_image(matched_images: list[CombinedImageHash]) -> ft.Container:
-    containers: list[ft.Control] = []
-
-    for img in matched_images:
-        model = ModelImage(hash=img)
-        container = ft.Container(
-            content=ft.Image(
-                src=str(img.path),
-                height=150,
-                fit=ft.BoxFit.COVER,
-                expand=1,
-            ),
-            on_click=lambda ev: toggle_delete(ev, model)
+    def __init__(
+        self, 
+        matched_images: list[CombinedImageHash],
+        width: float | None = None,
+        height: float | None = None,
+        expand: bool | None = None,
+        **kwargs: Any # pyright: ignore[reportAny, reportExplicitAny]
+    ):
+        super().__init__(
+            width=width, 
+            height=height,
+            expand=expand,
+            **kwargs # pyright: ignore[reportAny]
         )
-        containers.append(container)
 
-    img_row = ft.Row(
-        controls=containers,
-        alignment=ft.MainAxisAlignment.START,
-        scroll=ft.ScrollMode.ADAPTIVE,
-        width=float("inf"),
-    )
+        containers = self.create_model_images(matched_images=matched_images)
 
-    c = ft.Column(
-        controls=[img_row]
-    )
-    return ft.Container(
-        content=c,
-        padding=10,
-        border_radius=5,
-        bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.GREY_300),
-    )
+        img_row = ft.Row(
+            controls=containers,
+            alignment=ft.MainAxisAlignment.START,
+            scroll=ft.ScrollMode.ADAPTIVE,
+            width=float("inf"),
+        )
+
+        self.content = ft.Column(controls=[img_row])
+        self.padding = 10
+        self.border_radius = 5
+        self.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.GREY_300)
+
+    def create_model_images(self, matched_images: list[CombinedImageHash]) -> list[ft.Control]:
+        containers: list[ft.Control] = []
+
+        for img in matched_images:
+            model = ModelImage(hash=img)
+            container = ft.Container(
+                content=ft.Image(
+                    src=str(img.path),
+                    height=150,
+                    fit=ft.BoxFit.COVER,
+                    expand=1,
+                ),
+                on_click=lambda ev: self.toggle_delete(ev, model)
+            )
+            containers.append(container)
+
+        return containers
+
+    def toggle_delete(self, e: ft.Event[ft.Container], model: ModelImage):
+        is_deleted = model.toggle_delete()
+        if is_deleted:
+            e.control.border = ft.border.all(2, ft.Colors.RED)
+        else:
+            e.control.border = None
+
+        e.control.update()
+
