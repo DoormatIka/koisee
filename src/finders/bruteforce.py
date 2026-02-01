@@ -75,12 +75,10 @@ class BruteForceFinder:
                 if val == None:
                     continue
                 img1, img2 = val
-                matching_segments, distance = img1.cropped_hash.hash_diff(img2.cropped_hash)
                 self.hasher.log.match(
                     f"Left: {img1.path}\n" + 
                     f"\tRight: {img2.path}\n" + 
-                    f"\tGlobal Difference: {abs(img1.hash - img2.hash)}\n" +
-                    f"\tCropped Difference: (matching_segments: {matching_segments}, distance: {distance})\n"
+                    f"\tGlobal Difference: {abs(img1.hash - img2.hash)}\n"
                 )
                 nearest_matches.append((img1, img2))
 
