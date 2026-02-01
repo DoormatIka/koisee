@@ -38,8 +38,15 @@ class ImageHasher:
 
     def _pil_grayscale_convert_to_np_arr(self, p: Path):
         with Image.open(p) as img:
-            grayscale_img = img.convert('L').resize((self.size, self.size), Image.Resampling.NEAREST)
-            return np.array(grayscale_img, dtype=np.uint8)
+            grayscale_img = img.convert('L')
+
+            resized_img = grayscale_img.resize((self.size, self.size), Image.Resampling.NEAREST)
+            del grayscale_img
+
+            arr = np.array(resized_img, dtype=np.uint8)
+            del resized_img
+
+            return arr
 
     def global_phash(self, p: Path):
         """
@@ -53,7 +60,10 @@ class ImageHasher:
         zdata = (np.interp(arr, quantiles_values, quantiles) / 100 * 255).astype(np.uint8)
         img.putdata(zdata.flatten())
 
-        return imagehash.phash(image=img)
+        hashed = imagehash.phash(image=img)
+        del img
+
+        return hashed
 
 def imagehash_to_int(h: imagehash.ImageHash) -> int:
     arr = h.hash # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
