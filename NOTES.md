@@ -28,3 +28,9 @@ use OS-specific commands for this: linux - `find . -type f | wc -l`, win - `(Get
 `flet build linux` - compiling into a binary, [help](https://docs.flet.dev/cli/flet-build/#usage)
 
 `flet run -r src/main.py` - run developer mode
+
+## memory hunting
+
+`/usr/bin/time -v uv run src/main.py` - basic memory + time benchmarking
+
+`PYTHONFAULTHANDLER=1 uv run src/main.py` - prints the python stack and C extensions

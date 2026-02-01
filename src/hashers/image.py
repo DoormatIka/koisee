@@ -2,7 +2,7 @@
 import numpy as np
 import imagehash
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageFile, UnidentifiedImageError
 from PIL.Image import Image as PILImage
 from pathlib import Path
 
@@ -17,6 +17,8 @@ class ImageHasher:
         self.size = size
 
     def create_hash_from_image(self, image_path: Path) -> ImageHashResult:
+        ImageFile.LOAD_TRUNCATED_IMAGES = False
+
         try:
             with Image.open(image_path) as img:
                 _ = img.load()
