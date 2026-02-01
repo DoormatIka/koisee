@@ -40,6 +40,6 @@ def main():
 
 
 if __name__ == "__main__":
-    _ = ft.run(gui.gui.flet_main) # gui builder
-    # main()
+    # _ = ft.run(gui.gui.flet_main) # gui builder
+    main()
 
