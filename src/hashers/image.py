@@ -21,7 +21,6 @@ class ImageHasher:
 
         try:
             with Image.open(image_path) as img:
-                _ = img.load()
                 phash = self.global_phash(img)
                 crophash = self.crop_resistant_hash(img)
                 width, height = img.size
