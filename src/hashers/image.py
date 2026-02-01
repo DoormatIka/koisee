@@ -18,17 +18,19 @@ class ImageHasher:
 
     def create_hash_from_image(self, image_path: Path) -> ImageHashResult:
         try:
-            img = Image.open(image_path)
-            phash = self.global_phash(img)
-            crophash = self.crop_resistant_hash(img)
-            width, height = img.size
+            with Image.open(image_path) as img:
+                _ = img.load()
+                img = Image.open(image_path)
+                phash = self.global_phash(img)
+                crophash = self.crop_resistant_hash(img)
+                width, height = img.size
 
-            return CombinedImageHash(
-                path=image_path,
-                hash=phash,
-                cropped_hash=crophash,
-                pixel_count=width * height
-            ), None
+                return CombinedImageHash(
+                    path=image_path,
+                    hash=phash,
+                    cropped_hash=crophash,
+                    pixel_count=width * height
+                ), None
         except (UnidentifiedImageError, OSError) as e:
             return None, str(e)
 
