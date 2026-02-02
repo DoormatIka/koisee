@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
 
-from PIL import Image
-
 from hashers.types import CombinedImageHash, ImageHashResult
 from hashers.image import imagehash_to_int, ImageHasher
 
 from finders.types import ImagePair
+from finders.helpers import is_similar_image, get_supported_extensions
+
 
 # todo: crop resistant hashing doesn't do anything at the moment.
 # have a flag that says what hash triggered the nearest match.
@@ -88,14 +88,4 @@ class BruteForceFinder:
 
 
 
-def is_similar_image(img1: CombinedImageHash, img2: CombinedImageHash) -> ImagePair | None:
-    MATCH_THRESHOLD = 5
-    if img1.path != img2.path and abs(img1.hash - img2.hash) < MATCH_THRESHOLD:
-        return img1, img2
-    return None
-
-def get_supported_extensions():
-    ext_reading = {ext for ext, fmt in Image.registered_extensions().items() if fmt in Image.OPEN}
-    ext_reading.remove(".gif")
-    return ext_reading       
 
