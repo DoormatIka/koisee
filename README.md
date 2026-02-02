@@ -1,17 +1,21 @@
 <h1 align="center">koisee</h1>
-<p align="center">Let Koishi do her best finding images for you!</p>
+<p align="center">Let Koishi do her best finding images for you 🌸</p>
 <p align="center">
     <img src="./img/koishilogo.jpg" />
 </p>
 
-## what?
+## what is this?
 
-This tool finds duplicate images from a folder and identifies similar ones from images you provide.
+**koisee** is a small, experimental tool that helps you find duplicate or similar images in folders.
 
-This is a work-in-progress.
-I'm currently testing out different methods to make the program handle a large amount of images.
+she's still learning, so she isn't available yet... please wait warmly while she's preparing
 
-## future.
+## future...
 
-I may end up supporting gifs, videos, and audio.
-However my primary focus are images and optimizing it somehow. I am not adept in using profilers and flamegraphs yet.
+koisee wants to:
+
+- support gifs, videos and audio
+- becoming faster and less memory intensive
+- learn how to use profilers and flamegraphs for the above...
+
+though images are the main focus!
