@@ -35,6 +35,8 @@ def create_random_key_index() -> list[int]:
 type Bucket = LSHBucket[CombinedImageHash]
 type Buckets = list[Bucket]
 
+# this entire class relies on an assumption that LSH can have their similarity detected
+# with a random portion of their hash being matched.
 class LSHBucketFinder():
     hasher: ImageHasher
     buckets: Buckets
@@ -75,17 +77,11 @@ class LSHBucketFinder():
     async def create_hashes_from_directory(self, directory: Path):
         exts = get_supported_extensions()
 
-        n_thread = os.cpu_count()
-        if n_thread == None:
-            raise ValueError("OS cpu count cannot be found!")
-
-        n_thread = max(n_thread - 2, 2)
-        n_images = 0
-
         for ext in exts:
             for image_path in Path(directory).rglob(f"*{ext}"):
-                pass
-                
+                self._add_image_to_buckets_(image_path=image_path)
+
+        return self.buckets
 
     def get_similar_objects(self, image_hashes: None):
         pass
