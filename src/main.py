@@ -1,3 +1,4 @@
+import numpy
 from hashers.types import CombinedImageHash
 import logger
 import argparse
@@ -43,6 +44,8 @@ def quality_test_fn():
     h2, err = imghasher.create_hash_from_image(Path("/home/mualice/Downloads/G_Cfm4LbgAA9BrY (copy).jpg"))
     if h1 != None and h2 != None:
         print(h1.hash - h2.hash)
+        print(h1.hash.hash, type(h1.hash.hash))
+        print(h2.hash.hash, type(h1.hash.hash))
     else:
         print(err)
 

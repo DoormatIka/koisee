@@ -1,5 +1,7 @@
 
 import os
+import random
+import numpy as np
 
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
@@ -17,15 +19,19 @@ class LSHBucket(Generic[T]):
     bucket: list[T] = []
     def __init__(self, key_indexes: list[int]):
         self.key_indexes = key_indexes
-    def get_key_similarity(self, bin_val: list[int]) -> int:
+    def get_key_similarity(self, bin_val: list[bool]) -> int:
         """
-            val should look like [0, 1, 0, 1, 1, 1, 0, ...]
+            val should look like [True, False, True, False, False]
         """
         similarity = 0
         for index in self.key_indexes:
-            if bin_val[index] >= 1:
+            if bin_val[index] == True:
                 similarity += 1
         return similarity
+
+def create_random_key_index() -> list[int]:
+    resolution = 16
+    return [random.randint(0, 64) for _ in range(resolution)]
 
 class LSHBucketFinder():
     hasher: ImageHasher
