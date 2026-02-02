@@ -50,6 +50,8 @@ class LSHBucketFinder():
             buckets.append(lshbucket)
         return buckets
 
+    # adding an image is an O(k) operation, where k is the number of buckets
+    # compared to the brute force finder, where the same operation is O(1)
     def _add_image_to_buckets_(self, image_path: Path):
         matched: tuple[Bucket, int] | None = None
 
@@ -57,16 +59,17 @@ class LSHBucketFinder():
         if res == None:
             self.hasher.log.warn(err or "Unknown error.")
             return
+        # preprocessing step for buckets, unoptimized.
         bool_hash: list[bool] = res.hash.hash.flatten().tolist()
 
-        for bucket in self.buckets:
+        for bucket in self.buckets: # getting the best match out of the buckets
             similarity = bucket.get_key_similarity(bool_hash)
             if matched != None and similarity > matched[1]:
                 matched = (bucket, similarity)
             if matched == None:
                 matched = (bucket, similarity)
                 
-        if matched != None:
+        if matched != None: # pushing the image hash to that bucket
             bucket, similarity = matched
             bucket.bucket.append(res)
 
