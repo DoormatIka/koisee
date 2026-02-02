@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from hashers.types import CombinedImageHash
 import logger
 import argparse
@@ -7,6 +7,8 @@ from pathlib import Path
 from finders.types import FinderInterface, ImagePair
 import hashers.image
 import finders.bruteforce
+import finders.lshbucket
+
 import asyncio
 
 parser = argparse.ArgumentParser(description="Fuzzy duplicate image finder.")
@@ -40,17 +42,20 @@ async def main():
 
 def quality_test_fn():
     imghasher = hashers.image.ImageHasher(log=logger.Logger(), size=16)
+
     h1, err = imghasher.create_hash_from_image(Path("/home/mualice/Downloads/G_Cfm4LbgAA9BrY.png"))
     h2, err = imghasher.create_hash_from_image(Path("/home/mualice/Downloads/G_Cfm4LbgAA9BrY (copy).jpg"))
     if h1 != None and h2 != None:
-        print(h1.hash - h2.hash)
-        print(h1.hash.hash, type(h1.hash.hash))
-        print(h2.hash.hash, type(h1.hash.hash))
+        for _ in range(0, 16):
+            h1_hash: list[bool] = h1.hash.hash.flatten().tolist()
+            bucket = finders.lshbucket.LSHBucket[CombinedImageHash](finders.lshbucket.create_random_key_index())
+            similarity = bucket.get_key_similarity(h1_hash)
+            print(similarity)
     else:
         print(err)
 
 if __name__ == "__main__":
     # _ = ft.run(gui.gui.flet_main) # gui builder
     quality_test_fn()
-    asyncio.run(main())
+    # asyncio.run(main())
 

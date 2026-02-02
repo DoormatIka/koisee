@@ -31,12 +31,21 @@ class LSHBucket(Generic[T]):
 
 def create_random_key_index() -> list[int]:
     resolution = 16
-    return [random.randint(0, 64) for _ in range(resolution)]
+    return [random.randint(0, 63) for _ in range(resolution)]
 
-class LSHBucketFinder():
+class LSHBucketFinder[T]():
     hasher: ImageHasher
-    def __init__(self, hasher: ImageHasher):
+    buckets: list[LSHBucket[T]]
+    def __init__(self, hasher: ImageHasher, resolution: int = 8):
+        self.buckets = self._create_buckets_(resolution=resolution)
         self.hasher = hasher
+
+    def _create_buckets_(self, resolution: int = 8):
+        buckets: list[LSHBucket[T]] = list()
+        lshbucket = LSHBucket[T](key_indexes=create_random_key_index())
+        for _ in range(0, resolution):
+            buckets.append(lshbucket)
+        return buckets
 
     async def create_hashes_from_directory(self, directory: Path):
         exts = get_supported_extensions()
