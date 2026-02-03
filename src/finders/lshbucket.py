@@ -1,10 +1,11 @@
 
 import os
+import pprint
 import random
 
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, override
 
 from hashers.types import CombinedImageHash, ImageHashResult
 from hashers.image import imagehash_to_int, ImageHasher
@@ -12,12 +13,15 @@ from hashers.image import imagehash_to_int, ImageHasher
 from finders.types import ImagePair
 from finders.helpers import is_similar_image, get_supported_extensions
 
+
+
 T = TypeVar('T')
 class LSHBucket(Generic[T]):
     key_indexes: list[int]
-    bucket: list[T] = []
+    bucket: list[T]
     def __init__(self, key_indexes: list[int]):
         self.key_indexes = key_indexes
+        self.bucket = []
     def get_key_similarity(self, bin_val: list[bool]) -> int:
         """
             val should look like [True, False, True, False, False]
@@ -46,25 +50,17 @@ class LSHBucketFinder():
 
     def _create_buckets_(self, resolution: int = 8):
         buckets: Buckets = list()
-        lshbucket: Bucket = LSHBucket(key_indexes=create_random_key_index())
 
         for _ in range(0, resolution):
+            lshbucket: Bucket = LSHBucket(key_indexes=create_random_key_index())
             buckets.append(lshbucket)
         return buckets
 
     def _get_closest_matched_bucket_(self, bool_hash: list[bool]) -> Bucket | None:
-        matched: tuple[Bucket, int] | None = None
-        # preprocessing step for buckets, unoptimized.
-        for bucket in self.buckets: # getting the best match out of the buckets
-            similarity = bucket.get_key_similarity(bool_hash)
-            if matched != None and similarity > matched[1]:
-                matched = (bucket, similarity)
-            if matched == None:
-                matched = (bucket, similarity)
-        
-        if matched == None:
-            return
-        return matched[0]
+        if not self.buckets:
+            return None
+                
+        return max(self.buckets, key=lambda b: b.get_key_similarity(bool_hash))
 
     # adding an image is an O(k) operation, where k is the number of buckets
     # compared to the brute force finder, where the same operation is O(1)

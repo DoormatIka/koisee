@@ -1,5 +1,3 @@
-import numpy as np
-from hashers.types import CombinedImageHash
 import logger
 import argparse
 from pathlib import Path
@@ -18,8 +16,9 @@ _ = parser.add_argument("-d", "--delete", action='store_true', help="Enable auto
 async def scan_from_directory(directory: Path, _is_delete: bool = False) -> list[ImagePair]: # prototype
     print(f"[START] - Parsing through {directory}")
 
-    imghasher = hashers.image.ImageHasher(log=logger.Logger(), size=16)
-    bf: FinderInterface[list[CombinedImageHash], list[ImagePair]] = finders.bruteforce.BruteForceFinder(hasher=imghasher)
+    imghasher = hashers.image.ImageHasher(log=logger.MatchLogger(), size=16)
+    # bf: FinderInterface[list[CombinedImageHash], list[ImagePair]] = finders.bruteforce.BruteForceFinder(hasher=imghasher)
+    bf: FinderInterface[finders.lshbucket.Buckets, list[ImagePair]] = finders.lshbucket.LSHBucketFinder(hasher=imghasher)
 
     hashes = await bf.create_hashes_from_directory(directory)
     similar_images = bf.get_similar_objects(hashes)
@@ -33,8 +32,14 @@ async def main():
     if inp:
         dir_path = Path(inp)
         if dir_path.is_dir():
-            _ = await scan_from_directory(dir_path, _is_delete=is_delete)
-            print("Finished.")
+            nearest_matches = await scan_from_directory(dir_path, _is_delete=is_delete)
+            for img1, img2 in nearest_matches:
+                print(
+                    f"Left: {img1.path}\n" + 
+                        f"\tRight: {img2.path}\n" + 
+                        f"\tGlobal Difference: {abs(img1.hash - img2.hash)}\n"
+                )
+            print(f"{len(nearest_matches)} matches found. Finished.")
         else:
             parser.print_help()
     else:
@@ -46,16 +51,12 @@ def quality_test_fn():
     h1, err = imghasher.create_hash_from_image(Path("/home/mualice/Downloads/G_Cfm4LbgAA9BrY.png"))
     h2, err = imghasher.create_hash_from_image(Path("/home/mualice/Downloads/G_Cfm4LbgAA9BrY (copy).jpg"))
     if h1 != None and h2 != None:
-        for _ in range(0, 16):
-            h1_hash: list[bool] = h1.hash.hash.flatten().tolist()
-            bucket = finders.lshbucket.LSHBucket[CombinedImageHash](finders.lshbucket.create_random_key_index())
-            similarity = bucket.get_key_similarity(h1_hash)
-            print(similarity)
+        print(h2.hash - h1.hash)
     else:
         print(err)
 
 if __name__ == "__main__":
     # _ = ft.run(gui.gui.flet_main) # gui builder
-    quality_test_fn()
-    # asyncio.run(main())
+    # quality_test_fn()
+    asyncio.run(main())
 

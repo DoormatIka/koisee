@@ -75,11 +75,6 @@ class BruteForceFinder:
                 if val == None:
                     continue
                 img1, img2 = val
-                self.hasher.log.match(
-                    f"Left: {img1.path}\n" + 
-                    f"\tRight: {img2.path}\n" + 
-                    f"\tGlobal Difference: {abs(img1.hash - img2.hash)}\n"
-                )
                 nearest_matches.append((img1, img2))
 
         self.hasher.log.point()
