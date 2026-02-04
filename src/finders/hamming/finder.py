@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
 from hashers.types import CombinedImageHash, ImageHashResult
 from hashers.image import ImageHasher
@@ -70,7 +70,7 @@ class HammingClustererFinder():
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
-        with ProcessPoolExecutor() as executor:
+        with ThreadPoolExecutor() as executor:
             for res, err in executor.map(
                 self.hasher.create_hash_from_image,
                 path_generator,
