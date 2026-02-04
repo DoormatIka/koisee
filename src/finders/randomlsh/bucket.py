@@ -3,7 +3,7 @@ import random
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
-class LSHBucket(Generic[T]):
+class HammingBucket(Generic[T]):
     key_indexes: list[int]
     signature: list[bool]
     bucket: list[T]

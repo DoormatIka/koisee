@@ -1,5 +1,5 @@
 
-from .bucket import LSHBucket
-from .finder import RandomLSHFinder, Bucket, Buckets
+from .bucket import HammingBucket
+from .finder import HammingClustererFinder, Bucket, Buckets
 
-__all__ = ["LSHBucket", "RandomLSHFinder", "Bucket", "Buckets"]
+__all__ = ["HammingBucket", "HammingClustererFinder", "Bucket", "Buckets"]

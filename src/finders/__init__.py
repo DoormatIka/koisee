@@ -1,11 +1,11 @@
 
-from .randomlsh import LSHBucket, RandomLSHFinder, Buckets, Bucket
+from .randomlsh import HammingBucket, HammingClustererFinder, Buckets, Bucket
 from .bruteforce import BruteForceFinder
 from .types import FinderInterface, ImagePair
 
 __all__ = [
-    "LSHBucket", 
-    "RandomLSHFinder", 
+    "HammingBucket", 
+    "HammingClustererFinder", 
     "Buckets", 
     "Bucket",
 

@@ -14,5 +14,4 @@ class LSHIndex:
         self.overlap = overlap
         self.storage = {}
     def _get_overlapping_bands(self, hash_obj: ImageHash):
-        hash_obj.hash
         pass

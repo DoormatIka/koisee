@@ -9,24 +9,24 @@ from hashers.image import ImageHasher
 from finders.types import ImagePair
 from finders.helpers import is_similar_image, get_supported_extensions
 
-from .bucket import LSHBucket
+from .bucket import HammingBucket
 
 
 # this is a very rudimentary LSH.
 
-type Bucket = LSHBucket[CombinedImageHash]
+type Bucket = HammingBucket[CombinedImageHash]
 type Buckets = list[Bucket]
 
 # this entire class relies on an assumption that LSH can have their similarity detected
 # with a random portion of their hash being matched.
-class RandomLSHFinder():
+class HammingClustererFinder():
     hasher: ImageHasher
     buckets: Buckets
     def __init__(self, hasher: ImageHasher, resolution: int = 8):
         self.buckets = self._create_buckets_(resolution=resolution)
         self.hasher = hasher
 
-    def _create_buckets_(self, resolution: int = 8):
+    def _create_buckets_(self, resolution: int):
         buckets: Buckets = list()
         chunk_size = 64
 
@@ -35,7 +35,7 @@ class RandomLSHFinder():
             end = start + chunk_size
             indices = list(range(start, end))
 
-            lshbucket: Bucket = LSHBucket(key_indexes=indices)
+            lshbucket: Bucket = HammingBucket(key_indexes=indices)
             buckets.append(lshbucket)
         return buckets
 
@@ -47,15 +47,22 @@ class RandomLSHFinder():
 
     # adding an image is an O(k) operation, where k is the number of buckets
     # compared to the brute force finder, where the same operation is O(1)
-    def _add_image_to_buckets_(self, image_path: Path):
+    def _add_image_to_buckets_(self, image_path: Path, top_k: int = 2):
         res, err = self.hasher.create_hash_from_image(image_path)
         if res == None:
             self.hasher.log.warn(err or "Unknown error.")
             return
 
         bool_hash: list[bool] = res.hash.hash.flatten().tolist()
-        container = self._get_closest_matched_bucket_(bool_hash=bool_hash)
-        if container != None: # pushing the image hash to the best matched bucket
+
+        scored_buckets = [
+            (b.get_key_similarity(bool_hash), b)
+            for b in self.buckets
+        ]
+        scored_buckets.sort(key=lambda x: x[0], reverse=True)
+
+        for i in range(min(top_k, len(scored_buckets))):
+            _, container = scored_buckets[i]
             container.bucket.append(res)
 
     async def create_hashes_from_directory(self, directory: Path) -> Buckets:
@@ -69,11 +76,16 @@ class RandomLSHFinder():
 
     def get_similar_objects(self, image_hashes: Buckets) -> list[ImagePair]:
         nearest_matches: list[ImagePair] = list()
+        checked_pairs = set()
 
         for container in image_hashes:
             # assuming the images are arranged to their closest container.
             for i, img1 in enumerate(container.bucket):
                 for img2 in container.bucket[i + 1:]:
+                    pair = tuple(sorted([str(img1.path), str(img2.path)]))
+                    if pair in checked_pairs:
+                        continue
+
                     if is_similar_image(img1, img2) != None:
                         nearest_matches.append((img1, img2))
 
