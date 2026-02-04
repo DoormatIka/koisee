@@ -67,7 +67,6 @@ class HammingClustererFinder():
 
     async def create_hashes_from_directory(self, directory: Path) -> Buckets:
         exts = get_supported_extensions()
-        # Limit the queue so threads don't hash 10,000 images before you can save 10
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
