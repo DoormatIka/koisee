@@ -2,7 +2,6 @@
 import random
 
 from pathlib import Path
-from typing import Generic, TypeVar
 
 from hashers.types import CombinedImageHash
 from hashers.image import ImageHasher
@@ -10,28 +9,12 @@ from hashers.image import ImageHasher
 from finders.types import ImagePair
 from finders.helpers import is_similar_image, get_supported_extensions
 
+from .bucket import LSHBucket
+
 
 # this is a very rudimentary LSH.
 
 
-T = TypeVar('T')
-class LSHBucket(Generic[T]):
-    key_indexes: list[int]
-    signature: list[bool]
-    bucket: list[T]
-    def __init__(self, key_indexes: list[int]):
-        self.key_indexes = key_indexes
-        self.signature = [random.choice([True, False]) for _ in range(len(key_indexes))]
-        self.bucket = []
-    def get_key_similarity(self, bin_val: list[bool]) -> int:
-        """
-            val should look like [True, False, True, False, False]
-        """
-        similarity = 0
-        for i, ki in enumerate(self.key_indexes):
-            if bin_val[ki] == self.signature[i]:
-                similarity += 1
-        return similarity
 
 def create_random_key_index() -> list[int]:
     resolution = 16

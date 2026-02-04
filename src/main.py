@@ -4,8 +4,7 @@ from pathlib import Path
 
 from finders.types import FinderInterface, ImagePair
 import hashers.image
-import finders.bruteforce
-import finders.lshbucket
+from finders import LSHBucketFinder, Buckets, BruteForceFinder
 
 import asyncio
 
@@ -18,7 +17,7 @@ async def scan_from_directory(directory: Path, _is_delete: bool = False) -> list
 
     imghasher = hashers.image.ImageHasher(log=logger.MatchLogger(), size=16)
     # bf: FinderInterface[list[CombinedImageHash], list[ImagePair]] = finders.bruteforce.BruteForceFinder(hasher=imghasher)
-    bf: FinderInterface[finders.lshbucket.Buckets, list[ImagePair]] = finders.lshbucket.LSHBucketFinder(hasher=imghasher)
+    bf: FinderInterface[Buckets, list[ImagePair]] = LSHBucketFinder(hasher=imghasher)
 
     hashes = await bf.create_hashes_from_directory(directory)
     similar_images = bf.get_similar_objects(hashes)
