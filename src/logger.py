@@ -18,6 +18,8 @@ class MatchLogger:
         print(f"[MATCH] - {s}")
     def point(self) -> None:
         pass
+    def next_line(self) -> None:
+        pass
 
 class Logger: # color code per log level: info, warn, match
     SAVE: str = "\033[s"
