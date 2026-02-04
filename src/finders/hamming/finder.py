@@ -70,7 +70,7 @@ class HammingClustererFinder():
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
-        with ThreadPoolExecutor() as executor:
+        with ProcessPoolExecutor() as executor:
             for res, err in executor.map(
                 self.hasher.create_hash_from_image,
                 path_generator,
