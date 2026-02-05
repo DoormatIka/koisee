@@ -1,4 +1,5 @@
 
+from collections.abc import Collection
 from typing import Any
 import flet as ft
 
@@ -13,7 +14,7 @@ class ImageCardRow(ft.Container):
 
     def __init__(
         self, 
-        matched_images: list[CombinedImageHash],
+        images: Collection[CombinedImageHash],
         width: float | None = None,
         height: float | None = None,
         expand: bool | None = None,
@@ -26,7 +27,7 @@ class ImageCardRow(ft.Container):
             **kwargs # pyright: ignore[reportAny]
         )
 
-        containers = self.create_model_images(matched_images=matched_images)
+        containers = self.create_model_images(images)
 
         img_row = ft.Row(
             controls=containers,
@@ -40,7 +41,7 @@ class ImageCardRow(ft.Container):
         self.border_radius = 5
         self.bgcolor = ft.Colors.with_opacity(0.1, ft.Colors.GREY_300)
 
-    def create_model_images(self, matched_images: list[CombinedImageHash]) -> list[ft.Control]:
+    def create_model_images(self, matched_images: Collection[CombinedImageHash]) -> list[ft.Control]:
         containers: list[ft.Control] = []
 
         for img in matched_images:

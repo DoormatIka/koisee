@@ -1,8 +1,9 @@
 
 import flet as ft
 
+from gui.components.card_list import FileCardList
 from gui.components.file_picker import FilePicker
-from gui.components.card_images import ImageCardRow
+# from gui.components.card_images import ImageCardRow
 
 from gui.router.observer import Observer
 
@@ -15,7 +16,7 @@ def entry_page(observer: Observer):
     col = ft.Column(
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         controls=[
-            ImageCardRow(matched_images=[]),
+            FileCardList(observer=observer),
             FilePicker(observer=observer),
         ],
     )
