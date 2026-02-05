@@ -1,6 +1,7 @@
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+import inspect
 from typing import Literal
 
 @dataclass
@@ -8,7 +9,7 @@ class AppState:
     directory: str | None = None
 
 StateKey = Literal["directory"]
-ObserverFn = Callable[[object], None]
+ObserverFn = Callable[[object], None | Awaitable[None]]
 
 class Observer:
     state: AppState
@@ -21,11 +22,12 @@ class Observer:
             self._fns[key] = []
         self._fns[key].append(on_key)
 
-    def notify(self, key: StateKey, payload: object):
-        # Update the actual state first
+    async def notify(self, key: StateKey, payload: object):
         setattr(self.state, key, payload)
         
-        # Tell everyone about it
         if key in self._fns:
             for fn in self._fns[key]:
-                fn(payload)
+                if inspect.iscoroutinefunction(fn):
+                    await fn(payload)
+                else:
+                    _ = fn(payload)
