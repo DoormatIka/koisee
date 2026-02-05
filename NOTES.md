@@ -27,7 +27,7 @@ bonus features:
 
 ## commands
 
-`flet build linux` - compiling into a binary, [help](https://docs.flet.dev/cli/flet-build/#usage)
+`flet build linux`, `flet build windows` - compiling into a binary, [help](https://docs.flet.dev/cli/flet-build/#usage)
 
 `flet run -r src/main.py` - run developer mode
 
