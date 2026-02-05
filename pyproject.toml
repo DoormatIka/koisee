@@ -11,3 +11,13 @@ dependencies = [
     "numpy>=2.4.1",
     "pillow>=12.1.0",
 ]
+
+[tool.flet]
+project = "koisee"
+product = "koisee"
+icon = "assets/koishilogo.png"
+
+[tool.flet.compile]
+app = true
+packages = true
+cleanup = true

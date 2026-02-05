@@ -67,6 +67,7 @@ class FileCardList(ft.Container):
             image_matches = await clusterer(Path(directory))
             if len(image_matches) <= 0:
                 self._body.content = self._empty
+                self._image_count.value = ""
             else:
                 for pair in image_matches:
                     row = ImageCardRow(pair)
