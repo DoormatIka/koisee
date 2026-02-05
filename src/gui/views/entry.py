@@ -14,15 +14,20 @@ weight_clrs = {
 
 def entry_page(observer: Observer):
     col = ft.Column(
+        expand=True,
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         controls=[
-            FileCardList(observer=observer),
+            FileCardList(
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+                observer=observer
+            ),
             FilePicker(observer=observer),
         ],
     )
 
     return ft.Container(
-        alignment=ft.Alignment.CENTER,
+        # alignment=ft.Alignment.CENTER,
         content=col,
         expand=True,
     )

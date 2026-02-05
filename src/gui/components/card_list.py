@@ -18,6 +18,7 @@ class FileCardList(ft.Container):
         width: float | None = None,
         height: float | None = None,
         expand: bool | None = None,
+        scroll: ft.ScrollMode | None = None,
         **kwargs: Any # pyright: ignore[reportAny, reportExplicitAny]
     ):
         super().__init__(
@@ -29,16 +30,20 @@ class FileCardList(ft.Container):
         observer.subscribe("directory", self.create_matches)
 
         self._column = ft.Column(
-            scroll=ft.ScrollMode.ADAPTIVE,
+            scroll=scroll,
             controls=[]
         )
         self.content = self._column
         self._observer = observer
 
     async def create_matches(self, directory: object):
+        self._column.controls.clear()
+
         if isinstance(directory, str):
             image_matches = await clusterer(Path(directory))
             for pair in image_matches:
                 row = ImageCardRow(pair)
                 self._column.controls.append(row)
+
+        self.update()
 

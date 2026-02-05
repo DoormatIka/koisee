@@ -9,6 +9,7 @@ class AppState:
     directory: str | None = None
 
 StateKey = Literal["directory"]
+# add AppState to Callable soon.
 ObserverFn = Callable[[object], None | Awaitable[None]]
 
 class Observer:
