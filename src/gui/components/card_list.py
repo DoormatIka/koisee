@@ -4,7 +4,7 @@ from typing import Any
 import flet as ft
 
 from gui.router.observer import Observer
-from gui.components.card_images import ImageCardRow
+from gui.components.card_row import ImageCardRow
 from wrappers import clusterer
 
 

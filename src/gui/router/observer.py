@@ -1,14 +1,17 @@
 
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable, Collection
+from dataclasses import dataclass, field
 import inspect
 from typing import Literal
+
+from gui.models.image import ModelImage
 
 @dataclass
 class AppState:
     directory: str | None = None
+    images: Collection[ModelImage] = field(default_factory=list)
 
-StateKey = Literal["directory"]
+StateKey = Literal["directory", "images"]
 # add AppState to Callable soon.
 ObserverFn = Callable[[object], None | Awaitable[None]]
 
