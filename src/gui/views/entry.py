@@ -12,9 +12,9 @@ from gui.payload_types import DirectoryResult, SelectedImageResult
 Hello! This code uses an event bus to pass data around the UI.
 """
 
-def entry_page(observer: EventBus):
-    observer.subscribe("directory", manage_directory)
-    observer.subscribe("selected_images", manage_selected_images)
+def entry_page(bus: EventBus):
+    bus.subscribe("directory", manage_directory)
+    bus.subscribe("selected_images", manage_selected_images)
 
     col = ft.Column(
         expand=True,
@@ -22,9 +22,9 @@ def entry_page(observer: EventBus):
         controls=[
             FileCardList(
                 expand=True,
-                observer=observer
+                bus=bus
             ),
-            FilePicker(observer=observer),
+            FilePicker(bus=bus),
         ],
     )
 

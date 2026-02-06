@@ -6,10 +6,10 @@ from gui.router.observer import EventBus
 
 class FilePicker(ft.Container):
     content: ft.Control | None
-    _observer: EventBus
+    _bus: EventBus
     def __init__(
         self, 
-        observer: EventBus,
+        bus: EventBus,
         width: float | None = None,
         height: float | None = None,
         expand: bool | None = None,
@@ -21,8 +21,8 @@ class FilePicker(ft.Container):
             expand=expand,
             **kwargs # pyright: ignore[reportAny]
         )
-        self._observer = observer
-        observer.subscribe("directory", lambda s, o: print(s, o))
+        self._bus = bus
+        bus.subscribe("directory", lambda s, o: print(s, o))
 
         btn = ft.Button(
             content="Pick folder",
@@ -36,5 +36,5 @@ class FilePicker(ft.Container):
 
     async def _g(self):
         dir_path = await ft.FilePicker().get_directory_path(dialog_title="pick folder to scan")
-        await self._observer.notify("directory", dir_path)
+        await self._bus.notify("directory", dir_path)
 

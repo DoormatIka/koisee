@@ -15,10 +15,10 @@ class FileCardList(ft.Container):
     _image_count: ft.Text
     _column: ft.Column
     _empty: ft.Container
-    _observer: EventBus
+    _bus: EventBus
     def __init__(
         self, 
-        observer: EventBus,
+        bus: EventBus,
         width: float | None = None,
         height: float | None = None,
         expand: bool | None = None,
@@ -30,7 +30,7 @@ class FileCardList(ft.Container):
             expand=expand,
             **kwargs # pyright: ignore[reportAny]
         )
-        observer.subscribe("directory", self.create_matches)
+        bus.subscribe("directory", self.create_matches)
 
         self._column = ft.Column(
             scroll=ft.ScrollMode.AUTO,
@@ -58,7 +58,7 @@ class FileCardList(ft.Container):
             controls=[status, self._body],
             expand=True
         )
-        self._observer = observer
+        self._bus = bus
 
     async def create_matches(self, _: AppState, directory: object):
         self._column.controls.clear()
@@ -70,7 +70,7 @@ class FileCardList(ft.Container):
                 self._image_count.value = ""
             else:
                 for pair in image_matches:
-                    row = ImageCardRow(self._observer, pair)
+                    row = ImageCardRow(self._bus, pair)
                     self._column.controls.append(row)
                 self._body.content = self._column
 

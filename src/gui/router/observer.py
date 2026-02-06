@@ -31,9 +31,14 @@ class EventBus:
         self._fns[key].append(on_key)
 
     async def notify(self, key: StateKey, payload: object):
-        if key in self._fns:
-            for fn in self._fns[key]:
+        if key not in self._fns:
+            return
+
+        for fn in self._fns[key]:
+            try:
                 if inspect.iscoroutinefunction(fn):
                     await fn(self.state, payload)
                 else:
                     _ = fn(self.state, payload)
+            except Exception as e:
+                print(f"Subscriber failed for {key}: \n\t{e}")
