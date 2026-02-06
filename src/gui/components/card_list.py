@@ -44,16 +44,17 @@ class FileCardList(ft.Container):
             alignment=ft.Alignment.CENTER,
             expand=True
         )
-        self._image_count = ft.Text(
-            value=""
-        )
-        status = ft.Row(controls=[self._image_count])
-        
         self._body = ft.Container(
             alignment=ft.Alignment.TOP_LEFT,
             content=self._empty,
             expand=True,
         )
+
+        self._image_count = ft.Text(
+            value=""
+        )
+        status = ft.Row(controls=[self._image_count])
+        
         self.content = ft.Column(
             controls=[status, self._body],
             expand=True

@@ -13,7 +13,8 @@ class AppState:
 
 StateKey = Literal[
     "directory", 
-    "selected_images"
+    "selected_images",
+    "SEVERE_APP_ERROR"
 ]
 # add AppState to Callable soon.
 ObserverFn = Callable[[AppState, object], None | Awaitable[None]]
@@ -42,3 +43,4 @@ class EventBus:
                     _ = fn(self.state, payload)
             except Exception as e:
                 print(f"Subscriber failed for {key}: \n\t{e}")
+                await self.notify("SEVERE_APP_ERROR", e)

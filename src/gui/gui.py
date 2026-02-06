@@ -12,7 +12,7 @@ async def flet_main(page: ft.Page):
     router = Router(page=page)
     await page.push_route("/")
 
-    router.add_route(route="/main", container=entry_page(observer))
+    router.add_route(route="/main", container=entry_page(page, observer))
 
     await page.push_route("/main")
 
