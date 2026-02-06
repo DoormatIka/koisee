@@ -70,7 +70,7 @@ class FileCardList(ft.Container):
                 self._image_count.value = ""
             else:
                 for pair in image_matches:
-                    row = ImageCardRow(pair)
+                    row = ImageCardRow(self._observer, pair)
                     self._column.controls.append(row)
                 self._body.content = self._column
 
