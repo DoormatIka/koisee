@@ -4,7 +4,7 @@ import flet as ft
 from typing import Any
 
 from gui.components.delete import DeleteButton
-from gui.router.observer import EventBus
+from gui.router.bus import EventBus
 from gui.components.file_picker import FilePicker
 
 class TaskRow(ft.Container):

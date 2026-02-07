@@ -4,7 +4,7 @@ import flet as ft
 from gui.router.router import Router
 from gui.views.entry import entry_page
 
-from gui.router.observer import AppState, EventBus
+from gui.router.bus import AppState, EventBus
 
 async def flet_main(page: ft.Page):
     observer = EventBus(AppState())

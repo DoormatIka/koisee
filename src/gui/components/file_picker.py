@@ -3,7 +3,7 @@ from typing import Any
 import flet as ft
 
 from gui.payload_types import Directory
-from gui.router.observer import EventBus
+from gui.router.bus import EventBus
 
 class FilePicker(ft.Container):
     content: ft.Control | None

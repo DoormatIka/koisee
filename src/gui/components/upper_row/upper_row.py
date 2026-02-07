@@ -4,7 +4,7 @@ import flet as ft
 from typing import Any
 
 from gui.components.upper_row.image_counter import ImageCounter
-from gui.router.observer import EventBus
+from gui.router.bus import EventBus
 
 class UpperBar(ft.Container):
     content: ft.Control | None
@@ -31,6 +31,7 @@ class UpperBar(ft.Container):
         )
 
         self._image_count = ImageCounter(bus=bus)
+        # add logger here.
 
 
         self.content = ft.Row(
