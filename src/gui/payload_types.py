@@ -5,16 +5,35 @@ from gui.models.image import ModelImage
 
 import flet as ft
 
-SelectedImageActions = Literal["add", "delete"]
+class Event:
+    # base class for typed events. subclass with dataclasses for payloads.
+    pass
+
+# payloads
 @dataclass
-class SelectedImageResult:
+class Directory(Event):
+    directory: str | None
+
+@dataclass
+class SelectedPayload:
     id: str
     row: ft.Container
     model: ModelImage
-SelectedImageAction = tuple[SelectedImageActions, SelectedImageResult]
-
-DirectoryResult = str
 
 @dataclass
-class ImageMatchPayload:
+class SelectedAction(Event):
+    action: Literal["add", "delete"]
+    payload: SelectedPayload | None
+
+@dataclass
+class ImageUpdate(Event):
     total: int
+
+@dataclass
+class DeleteAllSelected(Event):
+    pass
+
+@dataclass
+class SevereAppError(Event):
+    error: Exception
+

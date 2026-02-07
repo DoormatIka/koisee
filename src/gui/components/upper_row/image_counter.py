@@ -3,7 +3,7 @@ import flet as ft
 
 from typing import Any
 
-from gui.payload_types import ImageMatchPayload
+from gui.payload_types import ImageUpdate
 from gui.router.observer import AppState, EventBus
 
 class ImageCounter(ft.Container):
@@ -29,7 +29,7 @@ class ImageCounter(ft.Container):
             expand=expand,
             **kwargs # pyright: ignore[reportAny]
         )
-        bus.subscribe("MATCHES", self.on_matches)
+        bus.subscribe(ImageUpdate, self.on_matches)
         # TODO:
         # bus.subscribe("DELETE_SEL_IMG", self.on_deleted_images)
         self._image_count = ft.Text(
@@ -39,10 +39,7 @@ class ImageCounter(ft.Container):
         self._bus = bus
         self.content = self._image_count
 
-    def on_matches(self, _: AppState, payload: object):
-        if not isinstance(payload, ImageMatchPayload):
-            raise TypeError("payload is not an ImageMatchPayload")
-
+    def on_matches(self, _: AppState, payload: ImageUpdate):
         self._image_count.value = f"Duplicate images: {payload.total}"
 
     def on_deleted_images(self, state: AppState, _: object):

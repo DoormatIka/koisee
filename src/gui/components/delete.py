@@ -2,6 +2,7 @@
 from typing import Any
 import flet as ft
 
+from gui.payload_types import DeleteAllSelected
 from gui.router.observer import EventBus
 
 class DeleteButton(ft.Container):
@@ -39,7 +40,7 @@ class DeleteButton(ft.Container):
         self.content = btn
 
     async def delete_selected(self):
-        await self._bus.notify("DELETE_SEL_IMG", None)
+        await self._bus.notify(DeleteAllSelected())
 
 
 

@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 import uuid
 import flet as ft
 
-from gui.payload_types import SelectedImageResult
+from gui.payload_types import SelectedAction, SelectedPayload
 from gui.router.observer import EventBus
 from hashers.types import CombinedImageHash
 from gui.models.image import ModelImage
@@ -121,12 +121,15 @@ class ImageCardRow(ft.Container):
     async def _notify_bus(self, view: ImageView, action: Literal["add", "delete"]):
         """Helper to package the SelectedImageResult and send it to the bus."""
         data = cast(ModelImage, view.container.data)
-        payload = SelectedImageResult(
+        payload = SelectedPayload(
             id=self.id,
             row=self,
             model=data,
         )
-        await self._bus.notify("modify_selected_images", (action, payload))
+        await self._bus.notify(SelectedAction(
+            action=action,
+            payload=payload
+        ))
 
     async def toggle_delete(self, i: int):
         """Entry point for the click event."""

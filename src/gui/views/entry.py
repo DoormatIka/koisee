@@ -1,5 +1,4 @@
 
-from typing import cast
 import flet as ft
 
 from gui.components.card_list import FileCardList
@@ -7,7 +6,7 @@ from gui.components.card_list import FileCardList
 from gui.components.task_row import TaskRow
 from gui.components.upper_row.upper_row import UpperBar
 from gui.router.observer import AppState, EventBus
-from gui.payload_types import DirectoryResult, SelectedImageAction
+from gui.payload_types import DeleteAllSelected, Directory, SelectedAction, SevereAppError
 
 """
 Hello! This code uses an event bus to pass data around the UI.
@@ -16,10 +15,10 @@ Hello! This code uses an event bus to pass data around the UI.
 def entry_page(page: ft.Page, bus: EventBus):
     manage_app_errors = make_manage_errors(page)
 
-    bus.subscribe("directory", manage_directory)
-    bus.subscribe("modify_selected_images", manage_selected_images)
-    bus.subscribe("DELETE_SEL_IMG", delete_selected_images)
-    bus.subscribe("SEVERE_APP_ERROR", manage_app_errors)
+    bus.subscribe(Directory, manage_directory)
+    bus.subscribe(SelectedAction, manage_selected_images)
+    bus.subscribe(DeleteAllSelected, delete_selected_images)
+    bus.subscribe(SevereAppError, manage_app_errors)
 
 
     col = ft.Column(
@@ -48,7 +47,7 @@ def make_manage_errors(page: ft.Page):
         bgcolor=ft.Colors.RED_100
     )
 
-    def manage_app_errors(_: AppState, payload: object):
+    def manage_app_errors(_: AppState, payload: SevereAppError):
         snack_bar.content = ft.Text(f"Error: {payload}")
         if not snack_bar.open:
             page.show_dialog(snack_bar)
@@ -56,20 +55,17 @@ def make_manage_errors(page: ft.Page):
 
     return manage_app_errors
 
-def manage_directory(state: AppState, payload: object):
-    if isinstance(payload, DirectoryResult):
-        state.directory = payload
+def manage_directory(state: AppState, payload: Directory):
+    state.directory = payload.directory
 
-def manage_selected_images(state: AppState, payload: object):
-    action, res = cast(SelectedImageAction, payload)
+def manage_selected_images(state: AppState, action: SelectedAction):
+    if action.action == "add" and action.payload is not None:
+        state.selected_images[action.payload.id] = action.payload
 
-    if action == "add":
-        state.selected_images[res.id] = res
+    if action.action == "delete" and action.payload is not None:
+        _ = state.selected_images.pop(action.payload.id)
 
-    if action == "delete":
-        _ = state.selected_images.pop(res.id)
-
-def delete_selected_images(state: AppState, _: object):
+def delete_selected_images(state: AppState, _: DeleteAllSelected):
     for row_id, result in list(state.selected_images.items()):
         parent = result.row.parent
         if isinstance(parent, (ft.Column, ft.Row, ft.ListView)):

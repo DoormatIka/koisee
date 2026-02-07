@@ -2,6 +2,7 @@
 from typing import Any
 import flet as ft
 
+from gui.payload_types import Directory
 from gui.router.observer import EventBus
 
 class FilePicker(ft.Container):
@@ -22,7 +23,7 @@ class FilePicker(ft.Container):
             **kwargs # pyright: ignore[reportAny]
         )
         self._bus = bus
-        bus.subscribe("directory", lambda s, o: print(s, o))
+        bus.subscribe(Directory, lambda s, o: print(s, o))
 
         btn = ft.Button(
             content="Pick folder",
@@ -36,5 +37,5 @@ class FilePicker(ft.Container):
 
     async def _g(self):
         dir_path = await ft.FilePicker().get_directory_path(dialog_title="pick folder to scan")
-        await self._bus.notify("directory", dir_path)
+        await self._bus.notify(Directory(directory=dir_path))
 

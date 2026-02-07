@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Any
 import flet as ft
 
-from gui.payload_types import ImageMatchPayload
+from gui.payload_types import Directory, ImageUpdate
 from gui.router.observer import AppState, EventBus
 from gui.components.card_row import ImageCardRow
 from wrappers import clusterer
+
 
 
 class FileCardList(ft.Container):
@@ -30,7 +31,7 @@ class FileCardList(ft.Container):
             expand=expand,
             **kwargs # pyright: ignore[reportAny]
         )
-        bus.subscribe("directory", self.create_matches)
+        bus.subscribe(Directory, self.create_matches)
 
         self._column = ft.Column(
             scroll=ft.ScrollMode.AUTO,
@@ -53,20 +54,21 @@ class FileCardList(ft.Container):
         self.content = self._body
         self._bus = bus
 
-    async def create_matches(self, _: AppState, directory: object):
+    async def create_matches(self, _: AppState, obj: Directory):
         self._column.controls.clear()
+        if obj.directory is None:
+            raise ValueError("Directory is null!")
 
-        if isinstance(directory, str):
-            image_matches = await clusterer(Path(directory))
-            if len(image_matches) <= 0:
-                self._body.content = self._empty
-            else:
-                for pair in image_matches:
-                    row = ImageCardRow(self._bus, pair)
-                    self._column.controls.append(row)
-                self._body.content = self._column
+        image_matches = await clusterer(Path(obj.directory))
+        if len(image_matches) <= 0:
+            self._body.content = self._empty
+        else:
+            for pair in image_matches:
+                row = ImageCardRow(self._bus, pair)
+                self._column.controls.append(row)
+            self._body.content = self._column
 
-            await self._bus.notify("MATCHES", ImageMatchPayload(total=len(image_matches)))
+        await self._bus.notify(ImageUpdate(total=len(image_matches)))
 
         self.update()
 
