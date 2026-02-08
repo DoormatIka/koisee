@@ -17,5 +17,6 @@ koisee wants to:
 - support gifs, videos and audio
 - becoming faster and less memory intensive
 - learn how to use profilers and flamegraphs for the above...
+- have CI/CD and automated testing..
 
 though images are the main focus!
