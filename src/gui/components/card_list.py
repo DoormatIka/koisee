@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 import flet as ft
 
-from gui.payload_types import Directory, ImageUpdate
+from gui.events import Directory, ImageUpdate
 from gui.router.bus import AppState, AppEventBus
 from gui.components.card_row import ImageCardRow
 from wrappers import clusterer

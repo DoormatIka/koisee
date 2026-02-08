@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import inspect
 from typing import Any, Generic, TypeVar, cast
 
-from gui.payload_types import Event, SelectedPayload, SevereAppError
+from gui.events import Event, SelectedPayload, SevereAppError
 
 from finders import FinderInterface, ImagePair
 from hashers import CombinedImageHash
@@ -21,7 +21,6 @@ class AppState:
 
 
 EventT = TypeVar("EventT", bound=Event)
-
 
 Ctx = TypeVar("Ctx")
 Observer = Callable[[Ctx, EventT], None | Awaitable[None]]

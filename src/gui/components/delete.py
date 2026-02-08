@@ -2,7 +2,7 @@
 from typing import Any
 import flet as ft
 
-from gui.payload_types import DeleteAllSelected
+from gui.events import DeleteAllSelected
 from gui.router.bus import AppEventBus
 
 class DeleteButton(ft.Container):

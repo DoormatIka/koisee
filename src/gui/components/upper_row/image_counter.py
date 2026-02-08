@@ -3,7 +3,7 @@ import flet as ft
 
 from typing import Any
 
-from gui.payload_types import ImageUpdate
+from gui.events import ImageUpdate
 from gui.router.bus import AppState, AppEventBus
 
 class ImageCounter(ft.Container):

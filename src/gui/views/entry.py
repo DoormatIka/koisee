@@ -6,7 +6,7 @@ from gui.components.card_list import FileCardList
 from gui.components.task_row import TaskRow
 from gui.components.upper_row.upper_row import UpperBar
 from gui.router.bus import AppState, AppEventBus
-from gui.payload_types import DeleteAllSelected, Directory, SelectedAction, SevereAppError
+from gui.events import DeleteAllSelected, Directory, SelectedAction, SevereAppError
 
 """
 Hello! This code uses an event bus to pass data around the UI.

@@ -2,6 +2,8 @@
 import sys
 from typing import Protocol
 
+
+
 class BlankLogger(Protocol):
     def info(self, s: str) -> None: ...
     def warn(self, s: str) -> None: ...

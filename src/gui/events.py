@@ -9,9 +9,12 @@ class Event:
     # base class for typed events. subclass with dataclasses for payloads.
     pass
 
+class UIEvent(Event):
+    pass
+
 # payloads
 @dataclass
-class Directory(Event):
+class Directory(UIEvent):
     directory: str | None
 
 @dataclass
@@ -21,24 +24,24 @@ class SelectedPayload:
     model: ModelImage
 
 @dataclass
-class SelectedAction(Event):
+class SelectedAction(UIEvent):
     action: Literal["add", "delete"]
     payload: SelectedPayload | None
 
 @dataclass
-class ImageUpdate(Event):
+class ImageUpdate(UIEvent):
     total: int
 
 @dataclass
-class DeleteAllSelected(Event):
+class DeleteAllSelected(UIEvent):
     pass
 
 @dataclass
-class SevereAppError(Event):
+class SevereAppError(UIEvent):
     error: Exception
 
 @dataclass
-class ProgressUpdated(Event): # tie this to the cli logger.
+class ProgressUpdated(UIEvent): # tie this to the cli logger.
     current: int
     total: int
     log: str

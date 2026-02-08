@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 import uuid
 import flet as ft
 
-from gui.payload_types import SelectedAction, SelectedPayload
+from gui.events import SelectedAction, SelectedPayload
 from gui.router.bus import AppEventBus
 from hashers.types import CombinedImageHash
 from gui.models.image import ModelImage
