@@ -1,18 +1,21 @@
 
-from asyncio import as_completed
-from queue import Queue
-from typing import cast
+import asyncio
+from collections.abc import Iterable
+from typing import TypeVar, cast
 import numpy as np
 from numpy.typing import NDArray
 
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
+from itertools import islice
 
-from hashers.types import CombinedImageHash, ImageHashResult
-from hashers.image import ImageHasher
+from src.gui.infra.logger import Error, HasherLogger, Info, Progress
+from src.hashers import ImageHashResult
+from src.hashers.types import CombinedImageHash
+from src.hashers.image import ImageHasher
 
-from finders.types import ImagePair
-from finders.helpers import is_similar_image, get_supported_extensions
+from src.finders.types import ImagePair
+from src.finders.helpers import is_similar_image, get_supported_extensions
 
 from .bucket import HammingBucket
 
@@ -25,9 +28,11 @@ type Buckets = list[Bucket]
 class HammingClustererFinder():
     hasher: ImageHasher
     buckets: Buckets
-    def __init__(self, hasher: ImageHasher, resolution: int = 8):
+    logger: HasherLogger
+    def __init__(self, hasher: ImageHasher, logger: HasherLogger, resolution: int = 8):
         self.buckets = self._create_buckets_(resolution=resolution)
         self.hasher = hasher
+        self.logger = logger
 
     def _create_buckets_(self, resolution: int):
         buckets: Buckets = list()
@@ -65,23 +70,50 @@ class HammingClustererFinder():
             _, container = scored_buckets[i]
             container.bucket.append(combined)
 
+    def clear_buckets(self):
+        for bucket in self.buckets:
+            bucket.bucket.clear()
+
     async def create_hashes_from_directory(self, directory: Path) -> Buckets:
+        self.clear_buckets()
+
         exts = get_supported_extensions()
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
+        n_images = 0
+        loop = asyncio.get_running_loop()
+
+        await self.logger.notify(Info(msg="Getting files from disk"))
+
         with ProcessPoolExecutor() as executor:
-            for res, err in executor.map(
-                self.hasher.create_hash_from_image,
-                path_generator,
-                chunksize=8
-            ):
-                if res is None:
-                    self.hasher.log.warn(err or "Unknown error!")
-                    continue
+            futures: list[asyncio.Future[list[ImageHashResult]]] = []
+            for path_chunk in chunked(path_generator, size=8):
+                future = loop.run_in_executor(executor, self._process_chunk, self.hasher, path_chunk)
+                futures.append(future)
 
-                self._add_image_to_buckets_(combined=res)
+            for completed_future in asyncio.as_completed(futures):
+                chunk_results = await completed_future
+                for res, err in chunk_results:
+                    if res is None:
+                        await self.logger.notify(Error(str(err)))
+                        continue
+                    
+                    self._add_image_to_buckets_(combined=res)
+                    n_images += 1
 
+                    await self.logger.notify(Progress(
+                        path=res.path,
+                        is_complete=False,
+                        current=n_images
+                    ))
+
+
+        await self.logger.notify(Progress(
+            path=Path(),
+            is_complete=True,
+            current=n_images
+        ))
         return self.buckets
 
     def get_similar_objects(self, image_hashes: Buckets) -> set[ImagePair]:
@@ -99,11 +131,19 @@ class HammingClustererFinder():
                         nearest_matches.add((img1, img2))
 
         return nearest_matches
-                
+
+    @staticmethod
+    def _process_chunk(hasher: ImageHasher, paths: list[Path]):
+        # This runs in the worker process
+        return [hasher.create_hash_from_image(p) for p in paths]
+
 
 def nparr_bool_to_int(arr: np.ndarray):
     packed = np.packbits(arr)
     return int.from_bytes(packed.tobytes(), byteorder="big")
 
-
-
+T = TypeVar("T")
+def chunked(iterable: Iterable[T], size: int):
+    it = iter(iterable)
+    while item := list(islice(it, size)):
+        yield item
