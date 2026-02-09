@@ -1,4 +1,5 @@
 
+import asyncio
 from collections.abc import Iterable
 from typing import TypeVar, cast
 import numpy as np
@@ -9,6 +10,7 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import islice
 
 from gui.infra.logger import Error, HasherLogger, Progress
+from hashers import ImageHashResult
 from hashers.types import CombinedImageHash
 from hashers.image import ImageHasher
 
@@ -74,24 +76,28 @@ class HammingClustererFinder():
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
         n_images = 0
+        loop = asyncio.get_running_loop()
         with ProcessPoolExecutor() as executor:
-            # change from executor.map() to the old fashioned
-            # futures array with the chunked function
-            for res, err in executor.map(
-                self.hasher.create_hash_from_image,
-                path_generator,
-                chunksize=8
-            ):
-                if res is None:
-                    await self.logger.notify(Error(str(err)))
-                    continue
-                self._add_image_to_buckets_(combined=res)
-                await self.logger.notify(Progress(
-                    path=res.path,
-                    is_complete=False,
-                    current=n_images
-                ))
-                n_images += 1
+            futures: list[asyncio.Future[list[ImageHashResult]]] = []
+            for path_chunk in chunked(path_generator, size=8):
+                future = loop.run_in_executor(executor, self._process_chunk, self.hasher, path_chunk)
+                futures.append(future)
+
+            for completed_future in asyncio.as_completed(futures):
+                chunk_results = await completed_future
+                for res, err in chunk_results:
+                    if res is None:
+                        await self.logger.notify(Error(str(err)))
+                        continue
+                    
+                    self._add_image_to_buckets_(combined=res)
+                    n_images += 1
+
+                    await self.logger.notify(Progress(
+                        path=res.path,
+                        is_complete=False,
+                        current=n_images
+                    ))
 
 
         await self.logger.notify(Progress(
@@ -116,7 +122,11 @@ class HammingClustererFinder():
                         nearest_matches.add((img1, img2))
 
         return nearest_matches
-                
+
+    @staticmethod
+    def _process_chunk(hasher: ImageHasher, paths: list[Path]):
+        # This runs in the worker process
+        return [hasher.create_hash_from_image(p) for p in paths]
 
 
 def nparr_bool_to_int(arr: np.ndarray):
