@@ -9,7 +9,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from itertools import islice
 
-from gui.infra.logger import Error, HasherLogger, Progress
+from gui.infra.logger import Error, HasherLogger, Info, Progress
 from hashers import ImageHashResult
 from hashers.types import CombinedImageHash
 from hashers.image import ImageHasher
@@ -70,13 +70,22 @@ class HammingClustererFinder():
             _, container = scored_buckets[i]
             container.bucket.append(combined)
 
+    def clear_buckets(self):
+        for bucket in self.buckets:
+            bucket.bucket.clear()
+
     async def create_hashes_from_directory(self, directory: Path) -> Buckets:
+        self.clear_buckets()
+
         exts = get_supported_extensions()
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
         n_images = 0
         loop = asyncio.get_running_loop()
+
+        await self.logger.notify(Info(msg="Getting files from disk"))
+
         with ProcessPoolExecutor() as executor:
             futures: list[asyncio.Future[list[ImageHashResult]]] = []
             for path_chunk in chunked(path_generator, size=8):

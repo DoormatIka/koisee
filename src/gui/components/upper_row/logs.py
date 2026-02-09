@@ -4,7 +4,7 @@ import flet as ft
 from typing import Any
 
 from gui.infra.app_bus import AppEventBus
-from gui.infra.logger import Logger, Progress
+from gui.infra.logger import Logger, Progress, Info
 
 class Logs(ft.Container):
     content: ft.Control | None
@@ -31,10 +31,14 @@ class Logs(ft.Container):
             **kwargs # pyright: ignore[reportAny]
         )
         logger.subscribe(Progress, self._on_progress)
+        logger.subscribe(Info, self._on_info)
 
         self._progress = ft.Text(value="")
         self.content = self._progress
         self._bus = bus
+
+    def _on_info(self, _: None, payload: Info):
+        self._progress.value = f"INFO: {payload.msg}"
 
     def _on_progress(self, _: None, payload: Progress):
         filename = truncate_name(payload.path.name)
@@ -43,6 +47,8 @@ class Logs(ft.Container):
             self._progress.value = f"Completed! Scanned {payload.current} images."
         else:
             self._progress.value = f"Scanned ({payload.current}): {filename}"
+
+        self.update()
 
 
 def truncate_name(name: str):

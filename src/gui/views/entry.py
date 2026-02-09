@@ -65,6 +65,8 @@ def make_manage_errors(page: ft.Page):
     return manage_app_errors
 
 def manage_directory(state: AppState, payload: Directory):
+    state.selected_images.clear()
+    state.total_images = 0
     state.directory = payload.directory
 
 def manage_selected_images(state: AppState, action: SelectedAction):

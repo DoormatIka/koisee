@@ -6,8 +6,6 @@ import flet as ft
 from gui.events import Directory, ImageUpdate
 from gui.infra.app_bus import AppState, AppEventBus
 from gui.components.card_row import ImageCardRow
-from wrappers import clusterer
-
 
 
 class FileCardList(ft.Container):
@@ -56,6 +54,7 @@ class FileCardList(ft.Container):
 
     async def create_matches(self, state: AppState, obj: Directory):
         self._column.controls.clear()
+
         if obj.directory is None:
             raise ValueError("Directory is null!")
 
@@ -72,5 +71,5 @@ class FileCardList(ft.Container):
 
         await self._bus.notify(ImageUpdate(total=len(image_matches)))
 
-        self.update()
+        self.page.update()
 
