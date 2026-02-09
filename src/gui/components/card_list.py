@@ -12,7 +12,7 @@ class FileCardList(ft.Container):
     content: ft.Control | None
     
     _body: ft.Container
-    _column: ft.Column
+    _list: ft.ListView
     _empty: ft.Container
     _bus: AppEventBus
     def __init__(
@@ -31,9 +31,11 @@ class FileCardList(ft.Container):
         )
         bus.subscribe(Directory, self.create_matches)
 
-        self._column = ft.Column(
+        self._list = ft.ListView(
             scroll=ft.ScrollMode.AUTO,
-            controls=[]
+            controls=[],
+            spacing=10,
+            item_extent=180
         )
         self._empty = ft.Container(
             content=ft.Text(
@@ -53,20 +55,20 @@ class FileCardList(ft.Container):
         self._bus = bus
 
     async def create_matches(self, state: AppState, obj: Directory):
-        self._column.controls.clear()
+        self._list.controls.clear()
 
         if obj.directory is None:
             raise ValueError("Directory is null!")
 
         image_hashes = await state.finder.create_hashes_from_directory(Path(obj.directory))
         similar_images = state.finder.get_similar_objects(image_hashes)
-        if len(image_hashes) <= 0:
+        if len(similar_images) <= 0:
             self._body.content = self._empty
         else:
             for pair in similar_images:
                 row = ImageCardRow(self._bus, pair)
-                self._column.controls.append(row)
-            self._body.content = self._column
+                self._list.controls.append(row)
+            self._body.content = self._list
 
         await self._bus.notify(ImageUpdate(total=len(similar_images)))
 

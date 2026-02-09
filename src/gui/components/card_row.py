@@ -1,4 +1,5 @@
 
+import asyncio
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any, Literal, cast
@@ -49,7 +50,7 @@ class ImageCardRow(ft.Container):
             controls=[view.container for view in views],
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.ADAPTIVE,
-            expand=True
+            height=180
         )
 
         self.width = float("inf")
@@ -67,7 +68,8 @@ class ImageCardRow(ft.Container):
         for i, img in enumerate(matched_images):
             imgui = ft.Image(
                 src=str(img.path),
-                height=150,
+                height=200,
+                width=150,
                 fit=ft.BoxFit.COVER,
             )
             icon = ft.Icon(
@@ -97,28 +99,30 @@ class ImageCardRow(ft.Container):
 
     def make_toggle_event(self, i: int):
         async def tog():
-            await self.toggle_delete(i)
+            self.toggle_delete(i)
         return tog
 
-    async def _deselect_current(self):
+    def _deselect_current(self):
         """Handles the UI and Bus notification for removing a selection."""
         if self._selected_image is None:
             return
 
         view = self._views[self._selected_image]
         view.icon.visible = False
+        view.icon.update()
         
-        await self._notify_bus(view, action="delete")
+        self._notify_bus(view, action="delete")
 
-    async def _select_new(self, i: int):
+    def _select_new(self, i: int):
         """Handles the UI and Bus notification for adding a selection."""
         self._selected_image = i
         view = self._views[i]
         view.icon.visible = True
+        view.icon.update()
         
-        await self._notify_bus(view, action="add")
+        self._notify_bus(view, action="add")
 
-    async def _notify_bus(self, view: ImageView, action: Literal["add", "delete"]):
+    def _notify_bus(self, view: ImageView, action: Literal["add", "delete"]):
         """Helper to package the SelectedImageResult and send it to the bus."""
         data = cast(ModelImage, view.container.data)
         payload = SelectedPayload(
@@ -126,21 +130,22 @@ class ImageCardRow(ft.Container):
             row=self,
             model=data,
         )
-        await self._bus.notify(SelectedAction(
-            action=action,
-            payload=payload
-        ))
 
-    async def toggle_delete(self, i: int):
+        _ = asyncio.create_task(
+            self._bus.notify(SelectedAction(
+                action=action,
+                payload=payload
+            ))
+        )
+
+    def toggle_delete(self, i: int):
         """Entry point for the click event."""
         if self._selected_image == i:
-            await self._deselect_current()
+            self._deselect_current()
             self._selected_image = None
         else:
             if self._selected_image is not None:
-                await self._deselect_current()
+                self._deselect_current()
             
-            await self._select_new(i)
-        
-        self.update()
+            self._select_new(i)
 

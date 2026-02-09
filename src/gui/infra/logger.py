@@ -78,7 +78,7 @@ async def drain_log_queue(
     """
     while True:
         try:
-            event = log_queue.get(block=False)
+            event = log_queue.get_nowait()
         except queue.Empty:
             await asyncio.sleep(0.05)
             continue
