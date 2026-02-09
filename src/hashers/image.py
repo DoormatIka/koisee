@@ -5,7 +5,7 @@ import imagehash
 from PIL import Image, ImageFile, UnidentifiedImageError
 from pathlib import Path
 
-from cli.logger import Logger
+from gui.infra.logger import Logger
 from hashers.types import CombinedImageHash, ImageHashResult
 
 class ImageHasher:

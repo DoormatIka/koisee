@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
 
-from cli.logger import Error, Info, Progress
+from gui.infra.logger import Error, Info, Progress
 from hashers.types import CombinedImageHash, ImageHashResult
 from hashers.image import imagehash_to_int, ImageHasher
 

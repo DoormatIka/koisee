@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 
+from gui.infra.logger import Error, Progress
 from hashers.types import CombinedImageHash
 from hashers.image import ImageHasher
 
@@ -68,6 +69,7 @@ class HammingClustererFinder():
 
         path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
 
+        n_images = 0
         with ProcessPoolExecutor() as executor:
             for res, err in executor.map(
                 self.hasher.create_hash_from_image,
@@ -75,11 +77,22 @@ class HammingClustererFinder():
                 chunksize=8
             ):
                 if res is None:
-                    self.hasher.log.warn(err or "Unknown error!")
+                    await self.hasher.log.notify(Error(str(err)))
                     continue
-
                 self._add_image_to_buckets_(combined=res)
+                await self.hasher.log.notify(Progress(
+                    path=res.path,
+                    is_complete=False,
+                    current=n_images
+                ))
+                n_images += 1
 
+
+        await self.hasher.log.notify(Progress(
+            path=Path(),
+            is_complete=True,
+            current=n_images
+        ))
         return self.buckets
 
     def get_similar_objects(self, image_hashes: Buckets) -> set[ImagePair]:
