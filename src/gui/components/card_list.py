@@ -7,6 +7,11 @@ from src.gui.events import Directory, ImageUpdate
 from src.gui.infra.app_bus import AppState, AppEventBus
 from src.gui.components.card_row import ImageCardRow
 
+# TODO: create pagination for this container.
+# store all of the created rows, but do not render them yet.
+# make it like a sliding window, unload when going out of bounds, and load when in bounds.
+
+# concepts: onscroll event for ListView, list slices, tracking index
 
 class FileCardList(ft.Container):
     content: ft.Control | None
