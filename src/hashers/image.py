@@ -5,14 +5,11 @@ import imagehash
 from PIL import Image, ImageFile, UnidentifiedImageError
 from pathlib import Path
 
-from gui.infra.logger import Logger
 from hashers.types import CombinedImageHash, ImageHashResult
 
 class ImageHasher:
     size: int
-    log: Logger
-    def __init__(self, log: Logger, size: int = 8):
-        self.log = log
+    def __init__(self, size: int = 8):
         self.size = size
 
     def create_hash_from_image(self, image_path: Path) -> ImageHashResult:

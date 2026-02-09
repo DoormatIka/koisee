@@ -8,21 +8,21 @@ from gui.components.task_row import TaskRow
 from gui.components.upper_row.upper_row import UpperBar
 from gui.infra.app_bus import AppState, AppEventBus
 from gui.events import DeleteAllSelected, Directory, ImageUpdate, SelectedAction, SevereAppError
-from gui.infra.logger import Progress
+from gui.infra.logger import Logger, Progress
 
 """
 Hello! This code uses an event bus to pass data around the UI.
 """
 
 
-def entry_page(page: ft.Page, state: AppState, bus: AppEventBus):
+def entry_page(page: ft.Page, state: AppState, logger: Logger, bus: AppEventBus):
     manage_app_errors = make_manage_errors(page)
 
     bus.subscribe(Directory, manage_directory)
     bus.subscribe(SelectedAction, manage_selected_images)
     bus.subscribe(DeleteAllSelected, delete_selected_images)
-    bus.subscribe(SevereAppError, manage_app_errors)
     bus.subscribe(ImageUpdate, image_update)
+    bus.subscribe(SevereAppError, manage_app_errors)
 
     state.logger.subscribe(Progress, on_progress)
 
@@ -31,7 +31,7 @@ def entry_page(page: ft.Page, state: AppState, bus: AppEventBus):
         expand=True,
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         controls=[
-            UpperBar(bus=bus),
+            UpperBar(bus, logger),
             FileCardList(
                 bus=bus,
                 expand=True,

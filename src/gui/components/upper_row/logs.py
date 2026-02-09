@@ -3,20 +3,17 @@ import flet as ft
 
 from typing import Any
 
-from gui.components.upper_row.image_counter import ImageCounter
-from gui.components.upper_row.logs import Logs
 from gui.infra.app_bus import AppEventBus
-from gui.infra.logger import Logger
+from gui.infra.logger import Logger, Progress
 
-class UpperBar(ft.Container):
+class Logs(ft.Container):
     content: ft.Control | None
     padding: ft.PaddingValue | None
     border_radius: ft.BorderRadiusValue | None
     bgcolor: ft.ColorValue | None
     width: float | None
 
-    _image_count: ImageCounter
-    _logs: Logs
+    _progress: ft.Text
     _bus: AppEventBus
     def __init__(
         self, 
@@ -33,13 +30,23 @@ class UpperBar(ft.Container):
             expand=expand,
             **kwargs # pyright: ignore[reportAny]
         )
+        logger.subscribe(Progress, self._on_progress)
 
-        self._image_count = ImageCounter(bus=bus)
-        self._logs = Logs(bus, logger)
-
-        self.content = ft.Row(
-            controls=[self._image_count, self._logs]
-        )
+        self._progress = ft.Text(value="")
+        self.content = self._progress
         self._bus = bus
 
-    
+    def _on_progress(self, _: None, payload: Progress):
+        filename = truncate_name(payload.path.name)
+        is_complete = payload.is_complete
+        if is_complete:
+            self._progress.value = f"Completed! Scanned {payload.current} images."
+        else:
+            self._progress.value = f"Scanned ({payload.current}): {filename}"
+
+
+def truncate_name(name: str):
+    max_length = 20
+    if len(name) > max_length:
+        return name[:max_length] + "..."
+    return name

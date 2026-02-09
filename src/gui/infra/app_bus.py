@@ -6,7 +6,7 @@ from typing import TypeVar
 
 from gui.events import UIEvent, SevereAppError
 from gui.infra.bus import PureEventBus
-from gui.infra.logger import Logger
+from gui.infra.logger import Logger, QueueLogger
 
 from finders import Buckets, FinderInterface, HammingClustererFinder, ImagePair
 from hashers import ImageHasher
@@ -19,14 +19,13 @@ class AppState:
     logger: Logger
     finder: FinderInterface[Buckets, set[ImagePair]]
 
-    def __init__(self):
+    def __init__(self, queue_logger: QueueLogger, logger: Logger):
         self.total_images = 0
         self.selected_images = dict()
-        self.logger = Logger()
+        self.logger = logger
         self.directory = None
-
-        hasher = ImageHasher(log=self.logger)
-        self.finder = HammingClustererFinder(hasher=hasher)
+        hasher = ImageHasher()
+        self.finder = HammingClustererFinder(hasher=hasher, logger=queue_logger)
 
 UIEventT = TypeVar("UIEventT", bound=UIEvent)
 UIObserver = Callable[[AppState, UIEventT], None | Awaitable[None]]

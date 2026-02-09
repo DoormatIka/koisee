@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, Future, as_completed
 
-from gui.infra.logger import Error, Info, Progress
+from gui.infra.logger import Error, HasherLogger, Info, Progress
 from hashers.types import CombinedImageHash, ImageHashResult
 from hashers.image import imagehash_to_int, ImageHasher
 
@@ -18,8 +18,10 @@ from finders.helpers import is_similar_image, get_supported_extensions
 
 class BruteForceFinder:
     hasher: ImageHasher
-    def __init__(self, hasher: ImageHasher):
+    logger: HasherLogger
+    def __init__(self, hasher: ImageHasher, logger: HasherLogger):
         self.hasher = hasher
+        self.logger = logger
 
     async def create_hashes_from_directory(self, directory: Path) -> list[CombinedImageHash]:
         exts = get_supported_extensions()
@@ -29,7 +31,7 @@ class BruteForceFinder:
         if n_thread == None:
             raise ValueError("OS cpu count cannot be found!")
 
-        await self.hasher.log.notify(Info(msg="Started hashes from directory."))
+        await self.logger.notify(Info(msg="Started hashes from directory."))
 
 
         n_thread = max(n_thread - 2, 2)
@@ -44,18 +46,18 @@ class BruteForceFinder:
                 result, err = future.result()
                 if result != None:
                     n_images += 1
-                    await self.hasher.log.notify(Progress(
+                    await self.logger.notify(Progress(
                         path=result.path,
                         current=n_images,
                         is_complete=True,
                     ))
                     image_hashes.append(result)
                 else:
-                    await self.hasher.log.notify(Error(err or ""))
+                    await self.logger.notify(Error(err or ""))
 
         image_hashes.sort(key=lambda x: imagehash_to_int(x.hash))
 
-        await self.hasher.log.notify(Progress(
+        await self.logger.notify(Progress(
             path=Path(),
             current=n_images,
             is_complete=False,

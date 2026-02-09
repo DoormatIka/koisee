@@ -1,12 +1,14 @@
 
-from typing import cast
+from collections.abc import Iterable
+from typing import TypeVar, cast
 import numpy as np
 from numpy.typing import NDArray
 
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
+from itertools import islice
 
-from gui.infra.logger import Error, Progress
+from gui.infra.logger import Error, HasherLogger, Progress
 from hashers.types import CombinedImageHash
 from hashers.image import ImageHasher
 
@@ -24,9 +26,11 @@ type Buckets = list[Bucket]
 class HammingClustererFinder():
     hasher: ImageHasher
     buckets: Buckets
-    def __init__(self, hasher: ImageHasher, resolution: int = 8):
+    logger: HasherLogger
+    def __init__(self, hasher: ImageHasher, logger: HasherLogger, resolution: int = 8):
         self.buckets = self._create_buckets_(resolution=resolution)
         self.hasher = hasher
+        self.logger = logger
 
     def _create_buckets_(self, resolution: int):
         buckets: Buckets = list()
@@ -71,16 +75,18 @@ class HammingClustererFinder():
 
         n_images = 0
         with ProcessPoolExecutor() as executor:
+            # change from executor.map() to the old fashioned
+            # futures array with the chunked function
             for res, err in executor.map(
                 self.hasher.create_hash_from_image,
                 path_generator,
                 chunksize=8
             ):
                 if res is None:
-                    await self.hasher.log.notify(Error(str(err)))
+                    await self.logger.notify(Error(str(err)))
                     continue
                 self._add_image_to_buckets_(combined=res)
-                await self.hasher.log.notify(Progress(
+                await self.logger.notify(Progress(
                     path=res.path,
                     is_complete=False,
                     current=n_images
@@ -88,7 +94,7 @@ class HammingClustererFinder():
                 n_images += 1
 
 
-        await self.hasher.log.notify(Progress(
+        await self.logger.notify(Progress(
             path=Path(),
             is_complete=True,
             current=n_images
@@ -112,9 +118,13 @@ class HammingClustererFinder():
         return nearest_matches
                 
 
+
 def nparr_bool_to_int(arr: np.ndarray):
     packed = np.packbits(arr)
     return int.from_bytes(packed.tobytes(), byteorder="big")
 
-
-
+T = TypeVar("T")
+def chunked(iterable: Iterable[T], size: int):
+    it = iter(iterable)
+    while item := list(islice(it, size)):
+        yield item

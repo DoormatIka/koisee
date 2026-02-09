@@ -21,8 +21,9 @@ class MethodAction(Enum):
 
 
 async def brute_force(directory: Path):
-    imghasher = ImageHasher(log=Logger(), size=16)
-    bf: FinderInterface[list[CombinedImageHash], list[ImagePair]] = BruteForceFinder(hasher=imghasher)
+    log = Logger()
+    imghasher = ImageHasher(size=16)
+    bf: FinderInterface[list[CombinedImageHash], list[ImagePair]] = BruteForceFinder(hasher=imghasher, logger=log)
 
     hashes = await bf.create_hashes_from_directory(directory)
     similar_images = bf.get_similar_objects(hashes)
@@ -30,8 +31,9 @@ async def brute_force(directory: Path):
     return similar_images
 
 async def clusterer(directory: Path):
-    imghasher = ImageHasher(log=Logger(), size=16)
-    bf: FinderInterface[Buckets, set[ImagePair]] = HammingClustererFinder(hasher=imghasher)
+    log = Logger()
+    imghasher = ImageHasher(size=16)
+    bf: FinderInterface[Buckets, set[ImagePair]] = HammingClustererFinder(hasher=imghasher, logger=log)
 
     hashes = await bf.create_hashes_from_directory(directory)
     similar_images = bf.get_similar_objects(hashes)

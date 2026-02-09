@@ -2,8 +2,11 @@
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-import sys
 from typing import TypeVar
+from typing import Protocol
+import queue
+import asyncio
+from multiprocessing.queues import Queue
 
 from gui.events import Event
 from gui.infra.bus import PureEventBus
@@ -51,6 +54,38 @@ class Logger:
         await self.bus.notify(None, event)
 
 
+class HasherLogger(Protocol):
+    """
+    An multi-threaded adapter for the PureEventBus logger.
+    """
+    async def notify(self, event: LoggerEvent) -> None: ...
+
+class QueueLogger:
+    _queue: Queue[LoggerEvent]
+    def __init__(self, queue: Queue[LoggerEvent]):
+        self._queue = queue
+
+    async def notify(self, event: LoggerEvent) -> None:
+        # IMPORTANT: event must be picklable
+        self._queue.put(event)
+
+async def drain_log_queue(
+    log_queue: Queue[LoggerEvent],
+    logger: Logger,
+):
+    """
+    The bridge of the multi-threaded adapter to the single-threaded event bus.
+    """
+    while True:
+        try:
+            event = log_queue.get(block=False)
+        except queue.Empty:
+            await asyncio.sleep(0.05)
+            continue
+
+        await logger.notify(event)
+
+"""
 class StyledCLILogger: # color code per log level: info, warn, match
     SAVE: str = "\033[s"
     RESTORE: str = "\033[u"
@@ -79,3 +114,4 @@ class StyledCLILogger: # color code per log level: info, warn, match
 
     def progress(self) -> None:
         return
+"""
