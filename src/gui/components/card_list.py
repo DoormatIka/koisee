@@ -13,6 +13,9 @@ from src.gui.components.card_row import ImageCardRow
 
 # concepts: onscroll event for ListView, list slices, tracking index
 
+# calculate the amount of items that can fit into the screen (variable)
+# and add 5 more items on each side of the bound.
+
 class FileCardList(ft.Container):
     content: ft.Control | None
     
