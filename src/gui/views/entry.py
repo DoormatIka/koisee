@@ -2,8 +2,8 @@
 import pprint
 import flet as ft
 
-from src.gui.components.card_list import FileCardList
 
+from src.gui.components.paginglist import PagingList
 from src.gui.components.task_row import TaskRow
 from src.gui.components.upper_row.upper_row import UpperBar
 from src.gui.infra.app_bus import AppState, AppEventBus
@@ -32,11 +32,8 @@ def entry_page(page: ft.Page, state: AppState, logger: Logger, bus: AppEventBus)
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         controls=[
             UpperBar(bus, logger),
-            FileCardList(
-                bus=bus,
-                expand=True,
-            ),
-            TaskRow(bus=bus),
+            PagingList(bus, expand=True),
+            TaskRow(bus),
         ],
     )
 
