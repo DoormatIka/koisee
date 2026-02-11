@@ -44,7 +44,7 @@ class PagingList(ft.Container):
         self._list_view = ft.Container(
             expand=True,
             border=ft.Border.all(width=0.1, color=ft.Colors.WHITE),
-            padding=ft.padding.all(5)
+            padding=ft.Padding.all(5)
         )
         self._left = ft.IconButton(
             icon=ft.Icons.ARROW_CIRCLE_LEFT,
