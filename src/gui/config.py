@@ -5,9 +5,9 @@ def config(page: ft.Page):
     page.title = "koisee"
     page.window.resizable = True
     page.window.width = 700
-    page.window.height = 400
+    page.window.height = 800
     page.window.min_width = 700
-    page.window.min_height = 400
+    page.window.min_height = 600
 
     def on_keyboard(e: ft.KeyboardEvent):
         if e.ctrl and e.key == "S":
