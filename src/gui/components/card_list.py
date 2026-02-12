@@ -1,4 +1,5 @@
 
+from collections.abc import Collection
 from typing import Any, override
 import flet as ft
 
@@ -21,7 +22,7 @@ class FileCardList(ft.Container):
     def __init__(
         self, 
         bus: AppEventBus,
-        row: list[ft.Control],
+        images: Collection[ft.Control],
         width: float | None = None,
         height: float | None = None,
         expand: bool | None = None,
@@ -37,7 +38,7 @@ class FileCardList(ft.Container):
 
         self._list = ft.ListView(
             scroll=ft.ScrollMode.AUTO,
-            controls=row,
+            controls=list(images),
             spacing=10,
         )
         self._empty = ft.Container(
@@ -50,7 +51,7 @@ class FileCardList(ft.Container):
         )
         self._body = ft.Container(
             alignment=ft.Alignment.TOP_LEFT,
-            content=self._empty if len(row) <= 0 else self._list,
+            content=self._empty if len(images) <= 0 else self._list,
             expand=True,
         )
 

@@ -1,9 +1,10 @@
 
 from pathlib import Path
-from typing import Any
+import pprint
+from typing import Any, cast
 import flet as ft
 
-from finders import ImagePair
+from src.finders import ImagePair
 from src.gui.components.card_row import ImageCardRow
 from src.gui.events import DeleteAllSelected, Directory, ImageUpdate
 from src.gui.components.card_list import FileCardList
@@ -24,7 +25,6 @@ class PagingList(ft.Container):
 
     _page_size: int
     _current_page: int
-    _total_page: int
     def __init__(
         self, 
         bus: AppEventBus,
@@ -40,13 +40,13 @@ class PagingList(ft.Container):
             **kwargs # pyright: ignore[reportAny]
         )
         bus.subscribe(Directory, self.create_matches)
-        bus.subscribe(DeleteAllSelected, self.refresh_lists)
+        # bus.subscribe(DeleteAllSelected, self.refresh_lists)
 
         self._bus = bus
-        self._current_page = 1
-        self._total_page = 0
+        self._current_page = 0
         self._pages = []
-        self._page_size = 20
+        self._page_size = 2
+        self._similar_images = set()
 
         self._list_view = ft.Container(
             expand=True,
@@ -63,7 +63,7 @@ class PagingList(ft.Container):
             on_click=self.move_right,
             icon_size=30,
         )
-        self._page_number = ft.Text(value=f"{self._current_page}/{self._total_page}")
+        self._page_number = ft.Text(value=f"{self._current_page}/{len(self._pages)}")
         row = ft.Row(
             controls=[self._left, self._page_number, self._right],
             alignment=ft.MainAxisAlignment.CENTER
@@ -74,12 +74,12 @@ class PagingList(ft.Container):
         self.expand = expand
 
     def move_left(self):
-        if self._current_page > 1:
+        if self._current_page > 0:
             self._current_page -= 1
             self.update_page()
 
     def move_right(self):
-        if self._current_page < self._total_page:
+        if self._current_page < len(self._pages) - 1:
             self._current_page += 1
             self.update_page()
 
@@ -87,28 +87,32 @@ class PagingList(ft.Container):
         """
         Calculate the pages for each change to a page.
         """
-        self._page_number.value = f"{self._current_page}/{self._total_page}"
+        self._page_number.value = f"{self._current_page + 1}/{len(self._pages)}"
         self._list_view.content = FileCardList(self._bus, self._pages[self._current_page])
 
-    async def create_matches(self, state: AppState, obj: Directory):
+        self.update()
+
+    async def paginate_images(self):
         self._pages.clear()
+
+        ordered_items = sorted(self._similar_images, key=lambda x: x[0].path)
+        for i in range(0, len(ordered_items), self._page_size):
+            chunk = ordered_items[i : i + self._page_size]
+            page_controls = [ImageCardRow(self._bus, pair) for pair in chunk]
+            self._pages.append(cast(list[ft.Control], page_controls))
+
+        await self._bus.notify(ImageUpdate(total=len(self._similar_images)))
+
+    async def create_matches(self, state: AppState, obj: Directory):
+        self._similar_images.clear()
 
         if obj.directory is None:
             raise ValueError("Directory is null!")
 
         image_hashes = await state.finder.create_hashes_from_directory(Path(obj.directory))
-        similar_images = state.finder.get_similar_objects(image_hashes)
+        self._similar_images = state.finder.get_similar_objects(image_hashes)
 
-        l: list[ft.Control] = []
-        for i, pair in enumerate(similar_images):
-            row = ImageCardRow(self._bus, pair)
-            if i % self._current_page == 0:
-                self._pages.append(l)
-                l.clear()
-            l.append(row)
-
-        self._total_page = len(self._pages)
-        await self._bus.notify(ImageUpdate(total=len(similar_images)))
-
-        self.update()
+        await self.paginate_images()
+        self.update_page()
+        
 
