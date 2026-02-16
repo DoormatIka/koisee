@@ -34,6 +34,7 @@ def convert_image_pair_to_scan_result(pairs: Collection[ImagePair]) -> list[Scan
 
     return scan_results
 
+
 @app.post("/scan")
 async def scan(item: ScanInput) -> ScanResult | ScanError:
     try:
@@ -46,6 +47,10 @@ async def scan(item: ScanInput) -> ScanResult | ScanError:
         return ScanError(error=f"Directory \"{e}\" not found!")
     except (Exception) as e:
         return ScanError(error=str(e))
+
+@app.get("/heartbeat")
+async def heartbeat():
+    return { "halozy": "heart of night" };
 
 
 if __name__ == "__main__":
