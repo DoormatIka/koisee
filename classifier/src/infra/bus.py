@@ -1,10 +1,11 @@
 
+
 from collections.abc import Awaitable, Callable
 import inspect
 from typing import Any, Generic, TypeVar, cast
 
-from src.gui.events import Event
-
+class Event:
+    pass
 
 EventT = TypeVar("EventT", bound=Event)
 
@@ -43,5 +44,4 @@ class PureEventBus(Generic[Ctx]):
                     _ = fn(ctx, event) # pyright: ignore[reportAny]
             except Exception as e:
                 await self.on_error(ctx, event, e)
-
 

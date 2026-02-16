@@ -1,5 +1,4 @@
 
-from PIL import Image
 from src.finders.types import ImagePair
 from src.hashers.types import CombinedImageHash
 

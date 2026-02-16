@@ -19,4 +19,5 @@ class CombinedImageHash:
             return NotImplemented
         return self.path == other.path
 
+
 type ImageHashResult = tuple[CombinedImageHash, None] | tuple[None, str]

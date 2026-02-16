@@ -1,11 +1,11 @@
 
 from pathlib import Path
 
-from src.gui.infra.logger import Logger
+from src.infra.logger import Logger
 from collections.abc import Collection
 
-from finders import HammingClustererFinder, Buckets, BruteForceFinder, FinderInterface, ImagePair
-from hashers import ImageHasher, CombinedImageHash
+from src.finders import HammingClustererFinder, Buckets, BruteForceFinder, FinderInterface, ImagePair
+from src.hashers import ImageHasher, CombinedImageHash
 
 from typing import override
 from enum import Enum

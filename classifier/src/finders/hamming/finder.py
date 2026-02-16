@@ -11,7 +11,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from itertools import islice
 
-from src.gui.infra.logger import Error, HasherLogger, Info, Progress
+from src.infra.logger import Error, HasherLogger, Info, Progress
 from src.hashers import ImageHashResult
 from src.hashers.types import CombinedImageHash
 from src.hashers.image import ImageHasher
@@ -119,7 +119,7 @@ class HammingClustererFinder():
 
     async def _create_hashes_multithreading(self, path_generator: Generator[Path, None, None], n_images: int):
         loop = asyncio.get_running_loop()
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=4) as executor:
             futures: list[asyncio.Future[list[ImageHashResult]]] = []
             for path_chunk in chunked(path_generator, size=8):
                 future = loop.run_in_executor(executor, _process_chunk, self.hasher, path_chunk)

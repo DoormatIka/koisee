@@ -4,7 +4,7 @@ import argparse
 from typing import cast
 from pathlib import Path
 
-from wrappers import scan_from_directory, MethodAction
+from src.wrappers import scan_from_directory, MethodAction
 
 class CLI:
     parser: argparse.ArgumentParser
