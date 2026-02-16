@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+	import { invoke } from "@tauri-apps/api/core";
+	import Icon from "@iconify/svelte"
 
   let name = $state("");
   let greetMsg = $state("");
@@ -25,7 +26,16 @@
       <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
     </a>
   </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
+	<span class="text-rotate text-2xl duration-6000">
+		<span>
+			<span class="flex flex-row items-center">
+				Tauri 
+				<Icon class="mx-2" icon="material-symbols:webhook" width="24" height="24" />
+			</span>
+			<span>Vite</span>
+			<span>SvelteKit</span>
+		</span>
+	</span>
 
   <form class="row" onsubmit={greet}>
     <input id="greet-input" placeholder="Enter a name..." bind:value={name} />

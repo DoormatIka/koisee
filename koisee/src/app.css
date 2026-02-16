@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes:
+    retro --default,
+    coffee --prefersdark;
+}
+
+h1 {
+  @apply text-5xl;
+}
