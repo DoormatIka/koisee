@@ -17,12 +17,6 @@ koisee wants to:
 - support gifs, videos and audio
 - becoming faster and less memory intensive
 - learn how to use profilers and flamegraphs for the above...
+- have CI/CD and automated testing..
 
 though images are the main focus!
-
-## limitations
-
-koisee fails with:
-
-- screenshots and vector graphics, it's a big limitation that will be addressed soon.
-- space efficiency, the app makes a massive binary (300MB+) due to the [imagehash]() library bundling scipy, and I used numpy as well. python is not designed for applications.
