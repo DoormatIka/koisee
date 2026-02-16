@@ -4,4 +4,6 @@
 	import "../app.css";
 </script>
 
-{@render children()}
+<div class="h-dvh w-dvw">
+	{@render children()}
+</div>
