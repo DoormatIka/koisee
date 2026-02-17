@@ -1,5 +1,5 @@
 
-import uvicorn
+from uvicorn import run
 
 from collections.abc import Collection
 import multiprocessing
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     multiprocessing.set_start_method("spawn", force=True)
     multiprocessing.freeze_support()
 
-    uvicorn.run("main:app", port=8080, reload=True)
+    run("main:app", port=8080, reload=True)
 
 
 

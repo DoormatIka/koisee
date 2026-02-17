@@ -27,9 +27,9 @@ bonus features:
 
 ## commands
 
-`flet build linux`, `flet build windows` - compiling into a binary, [help](https://docs.flet.dev/cli/flet-build/#usage)
+todo: make a CI/CD pipeline for all of this.
 
-`flet run -r src/main.py` - run developer mode
+`uv run nuitka --standalone --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --python-flag=no_docstrings main.py` - build script
 
 ## memory hunting
 

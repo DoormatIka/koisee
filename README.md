@@ -21,3 +21,15 @@ koisee wants to:
 
 though images are the main focus!
 
+## building
+
+todo: make a `just` recipe for all of this.
+
+```
+cd koisee
+cargo tauri build --release
+
+cd classifier
+uv sync
+uv run nuitka --standalone --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --python-flag=no_docstrings main.py
+```
