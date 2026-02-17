@@ -5,10 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "fastapi[standard]>=0.129.0",
+    "fastapi>=0.129.0",
     "imagehash>=4.3.2",
     "numpy>=2.4.1",
     "pillow>=12.1.0",
+    "uvicorn>=0.41.0",
 ]
 
 [tool.basedpyright]
