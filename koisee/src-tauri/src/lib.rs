@@ -12,6 +12,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_shell::{ShellExt, process::CommandEvent};
 use tokio::time;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,10 +90,41 @@ fn setup_heartbeat(handle: AppHandle) {
         }
     });
 }
+fn setup_classifier(app: AppHandle) {
+    let resource_dir = app.path().resource_dir().expect("No resource directory found!");
+    let lib_path = resource_dir.join("binaries");
+
+    // handle windows builds as well.
+    let classifier_sidecar = app.shell().sidecar("classifier").unwrap()
+        .current_dir(lib_path.to_string_lossy().to_string())
+        .env("LD_LIBRARY_PATH", lib_path.to_string_lossy().to_string())
+        .env("PYTHONPATH", lib_path.to_string_lossy().to_string());
+
+    let (mut rx, _) = classifier_sidecar.spawn().expect("Failed to spawn sidecar.");
+    
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(line_bytes) => {
+                    let line = String::from_utf8_lossy(&line_bytes);
+                    print!("out: {}", line);
+                    app.emit("message", Some(format!("'{}'", line)))
+                        .expect("failed to emit event");
+                },
+                CommandEvent::Stderr(line_bytes) => {
+                    let line = String::from_utf8_lossy(&line_bytes);
+                    print!("err: {}", line);
+                }
+                _ => {}
+            };
+        }
+    });
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let appdata = AppState {
@@ -102,6 +134,7 @@ pub fn run() {
             app.manage(appdata);
 
             setup_heartbeat(app.handle().clone());
+            setup_classifier(app.handle().clone());
 
             Ok(())
         })
