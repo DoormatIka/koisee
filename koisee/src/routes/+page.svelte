@@ -61,8 +61,8 @@
 		</span>
 	</span>
 
-  <form class="flex flex-col gap-4">
-    <input type="text" class="input" placeholder="No directory selected..." value={selected_dir} readonly />
+  <form class="flex flex-row gap-2">
+    <input type="text" class="input flex-1" placeholder="No directory selected..." value={selected_dir} readonly />
     <button class="btn" onclick={scanDirectory}>Scan</button>
   </form>
 	<p class="px-5 text-center">{JSON.stringify(err)}</p>
