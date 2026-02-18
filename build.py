@@ -1,8 +1,18 @@
 
+import os
 from pathlib import Path
 import subprocess
 import platform
 import shutil
+import argparse
+
+parser = argparse.ArgumentParser()
+_ = parser.add_argument("-sn", "--skip-nuitka", help="Skip nuitka compilation", action="store_true")
+_ = parser.add_argument("-st", "--skip-tauri", help="Skip tauri compilation", action="store_true")
+args = parser.parse_args()
+skip_nuitka: bool = args.skip_nuitka # pyright: ignore[reportAny]
+skip_tauri: bool = args.skip_tauri # pyright: ignore[reportAny]
+
 
 os_name = platform.system()
 ext = ".exe" if os_name == "Windows" else ""
@@ -19,8 +29,11 @@ classifier_build_path = Path("classifier/").absolute()
 classifier_name = f"classifier-{target}{ext}"
 classifier_build_cmd = f"uv run nuitka --standalone --nofollow-import-to=tkinter --nofollow-import-to=_tkinter --noinclude-dll=\"libtcl*\" --noinclude-dll=\"libtk*\" --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --output-filename={classifier_name} main.py"
 
-_ = subprocess.run(["uv", "sync"], cwd=classifier_build_path)
-_ = subprocess.run(classifier_build_cmd.split(" "), cwd=classifier_build_path)
+if skip_nuitka:
+    print(f"skipped classifier building!")
+else:
+    _ = subprocess.run(["uv", "sync"], cwd=classifier_build_path)
+    _ = subprocess.run(classifier_build_cmd.split(" "), cwd=classifier_build_path)
 
 print(f"======[ Transferring python build to tauri. ]=======")
 source_dir = Path("classifier/main.dist/")
@@ -45,6 +58,9 @@ def copy_dir_contents_to_another(source_dir: Path, dest_dir: Path):
             _ = shutil.copy(f, dest_dir / f.name)
 
 print(f"Deleting destination folder \"{target_dir}\" contents.")
+if not os.path.exists(target_dir):
+    os.makedirs(target_dir)
+
 delete_all_files(target_dir)
 print(f"Copying {source_dir} to {target_dir}.")
 copy_dir_contents_to_another(source_dir, target_dir)
