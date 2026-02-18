@@ -1,4 +1,8 @@
 
+import sys
+import os
+import threading
+
 from uvicorn import run
 
 from collections.abc import Collection
@@ -54,12 +58,17 @@ async def scan(item: ScanInput) -> ScanResult | ScanError:
 async def heartbeat():
     return { "halozy": "heart of night" };
 
+def watch_stdin():
+    _ = sys.stdin.read() # if the thread gets past this code, it means the parent died
+    os._exit(0)
 
 if __name__ == "__main__":
+    threading.Thread(target=watch_stdin, daemon=True).start()
+
     multiprocessing.set_start_method("spawn", force=True)
     multiprocessing.freeze_support()
 
-    run("main:app", port=8080, reload=True)
+    run("main:app", port=8080, reload=False)
 
 
 

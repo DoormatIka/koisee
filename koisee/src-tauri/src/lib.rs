@@ -1,18 +1,16 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
+
 use std::{
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Mutex,
-    },
-    time::Duration,
+    path::Path, sync::{
+        Mutex, atomic::{AtomicBool, Ordering}
+    }, time::Duration
 };
 
 use serde::{Deserialize, Serialize};
-use tauri::Emitter;
+use tauri::{Emitter, RunEvent};
 use tauri::{AppHandle, Manager, State};
-use tauri_plugin_shell::{ShellExt, process::CommandEvent};
+use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::time;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,6 +30,7 @@ struct ScanInput {
 struct AppState {
     client: reqwest::Client,
     is_server_alive: AtomicBool,
+    child: Mutex<Option<CommandChild>>,
 }
 
 #[tauri::command]
@@ -72,7 +71,7 @@ async fn get_similar_images(state: State<'_, AppState>, dir: String) -> Result<S
 fn setup_heartbeat(handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let client = reqwest::Client::new();
-        let mut interval = time::interval(Duration::from_secs(1));
+        let mut interval = time::interval(Duration::from_secs(5));
 
         loop {
             interval.tick().await;
@@ -90,17 +89,29 @@ fn setup_heartbeat(handle: AppHandle) {
         }
     });
 }
-fn setup_classifier(app: AppHandle) {
-    let resource_dir = app.path().resource_dir().expect("No resource directory found!");
-    let lib_path = resource_dir.join("binaries");
+fn setup_classifier(handle: AppHandle) {
+    let resource_dir = handle.path().resource_dir().expect("No resource directory found!");
 
-    // handle windows builds as well.
-    let classifier_sidecar = app.shell().sidecar("classifier").unwrap()
-        .current_dir(lib_path.to_string_lossy().to_string())
-        .env("LD_LIBRARY_PATH", lib_path.to_string_lossy().to_string())
-        .env("PYTHONPATH", lib_path.to_string_lossy().to_string());
+    // need to handle windows builds as well.
+    let lib_path = resource_dir.join("binaries/classifier-bundle");
+    let target = env!("APP_TARGET");
+    let cmd_name = format!("classifier-{}", target);
+    let exec_path = lib_path.join(&cmd_name);
 
-    let (mut rx, _) = classifier_sidecar.spawn().expect("Failed to spawn sidecar.");
+    let classifier_sidecar = handle.shell().command(exec_path)
+        .current_dir(lib_path.to_string_lossy().to_string());
+
+    let (mut rx, child) = classifier_sidecar
+        .spawn()
+        .expect("Failed to spawn sidecar.");
+
+    {
+        let guard_handle = handle.clone();
+        let appdata = guard_handle.state::<AppState>();
+        let mut guard = appdata.child.lock().unwrap();
+        *guard = Some(child);
+    }
+
     
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -108,7 +119,7 @@ fn setup_classifier(app: AppHandle) {
                 CommandEvent::Stdout(line_bytes) => {
                     let line = String::from_utf8_lossy(&line_bytes);
                     print!("out: {}", line);
-                    app.emit("message", Some(format!("'{}'", line)))
+                    handle.emit("message", Some(format!("'{}'", line)))
                         .expect("failed to emit event");
                 },
                 CommandEvent::Stderr(line_bytes) => {
@@ -126,10 +137,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
             let appdata = AppState {
                 client: reqwest::Client::new(),
                 is_server_alive: AtomicBool::new(false),
+                child: Mutex::new(None)
             };
             app.manage(appdata);
 
@@ -144,6 +156,17 @@ pub fn run() {
             get_heartbeat,
             get_similar_images
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|handle, event| match event {
+            RunEvent::Exit => {
+                let appdata = handle.state::<AppState>();
+                let mut state = appdata.child.lock().unwrap();
+                if let Some(child) = state.take() {
+                    let _ = child.kill().unwrap();
+                    println!("killing child.");
+                }
+            },
+            _ => {}
+        });
 }
