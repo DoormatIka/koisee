@@ -52,4 +52,9 @@ copy_dir_contents_to_another(source_dir, target_dir)
 
 print(f"======[ building tauri application. ]=======")
 koisee_path = Path("koisee/").absolute()
-_ = subprocess.run(["npm", "run", "tauri", "build", "--", "--verbose"], cwd=koisee_path)
+if os_name == "Windows":
+    print(f"building portable windows binary.")
+    _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--no-bundle"], cwd=koisee_path)
+else:
+    print(f"bundling deb file + portable version.")
+    _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--verbose"], cwd=koisee_path)
