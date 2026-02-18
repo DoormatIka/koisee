@@ -1,15 +1,12 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-
-
 use std::{
-    path::Path, sync::{
+    path::{Path, PathBuf}, sync::{
         Mutex, atomic::{AtomicBool, Ordering}
     }, time::Duration
 };
 
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, RunEvent};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::time;
 
@@ -89,19 +86,42 @@ fn setup_heartbeat(handle: AppHandle) {
         }
     });
 }
-fn setup_classifier(handle: AppHandle) {
-    // let resource_dir = handle.path().resource_dir().expect("No resource directory found!");
-    let exe_path = std::env::current_exe().expect("Failed to get current exe path.");
-    let app_dir = exe_path.parent().expect("Failed to get parent dir.");
 
-    // need to handle windows builds as well.
-    let lib_path = app_dir.join("binaries/classifier-bundle");
+fn get_classifier_path<R: Runtime>(handle: &AppHandle<R>) -> PathBuf {
+    // OS picking
     let target = env!("APP_TARGET");
-    let cmd_name = format!("classifier-{}", target);
-    let exec_path = lib_path.join(&cmd_name);
+    let binary_name = if cfg!(windows) {
+        format!("classifier-{}.exe", target)
+    } else {
+        format!("classifier-{}", target)
+    };
 
-    println!("{}", exec_path.display());
+    // standard path
+    let installed_path = handle.path().resource_dir()
+        .expect("Failed to resolve resource directory")
+        .join("binaries")
+        .join("classifier-bundle")
+        .join(&binary_name);
 
+    // portable path
+    if !installed_path.exists() {
+        let exe_path = std::env::current_exe().expect("Failed to get current exe path");
+        let app_dir = exe_path.parent().expect("Failed to get parent dir");
+        
+        return app_dir
+            .join("binaries")
+            .join("classifier-bundle")
+            .join(&binary_name);
+    }
+
+    installed_path
+}
+
+
+fn setup_classifier(handle: AppHandle) {
+    let exec_path = get_classifier_path(&handle);
+    let lib_exec_path = exec_path.clone();
+    let lib_path = lib_exec_path.parent().unwrap();
     let classifier_sidecar = handle.shell().command(exec_path)
         .current_dir(lib_path.to_string_lossy().to_string());
 

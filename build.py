@@ -17,7 +17,7 @@ print(f"======[ BUILDING ON {target} ]=======")
 print(f"======[ Building classifer. ]=======")
 classifier_build_path = Path("classifier/").absolute()
 classifier_name = f"classifier-{target}{ext}"
-classifier_build_cmd = f"uv run nuitka --standalone --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --output-filename={classifier_name} main.py"
+classifier_build_cmd = f"uv run nuitka --standalone --nofollow-import-to=tkinter --nofollow-import-to=_tkinter --noinclude-dll=\"libtcl*\" --noinclude-dll=\"libtk*\" --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --output-filename={classifier_name} main.py"
 
 _ = subprocess.run(["uv", "sync"], cwd=classifier_build_path)
 _ = subprocess.run(classifier_build_cmd.split(" "), cwd=classifier_build_path)
@@ -49,3 +49,7 @@ delete_all_files(target_dir)
 print(f"Copying {source_dir} to {target_dir}.")
 copy_dir_contents_to_another(source_dir, target_dir)
 
+
+print(f"======[ building tauri application. ]=======")
+koisee_path = Path("koisee/").absolute()
+_ = subprocess.run(["npm", "run", "tauri", "build", "--", "--verbose"], cwd=koisee_path)
