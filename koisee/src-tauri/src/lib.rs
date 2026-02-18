@@ -90,13 +90,17 @@ fn setup_heartbeat(handle: AppHandle) {
     });
 }
 fn setup_classifier(handle: AppHandle) {
-    let resource_dir = handle.path().resource_dir().expect("No resource directory found!");
+    // let resource_dir = handle.path().resource_dir().expect("No resource directory found!");
+    let exe_path = std::env::current_exe().expect("Failed to get current exe path.");
+    let app_dir = exe_path.parent().expect("Failed to get parent dir.");
 
     // need to handle windows builds as well.
-    let lib_path = resource_dir.join("binaries/classifier-bundle");
+    let lib_path = app_dir.join("binaries/classifier-bundle");
     let target = env!("APP_TARGET");
     let cmd_name = format!("classifier-{}", target);
     let exec_path = lib_path.join(&cmd_name);
+
+    println!("{}", exec_path.display());
 
     let classifier_sidecar = handle.shell().command(exec_path)
         .current_dir(lib_path.to_string_lossy().to_string());

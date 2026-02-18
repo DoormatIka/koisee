@@ -26,10 +26,7 @@ though images are the main focus!
 todo: make a `just` recipe for all of this.
 
 ```
+python build.py
 cd koisee
-cargo tauri build --release
-
-cd classifier
-uv sync
-uv run nuitka --standalone --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --python-flag=no_docstrings main.py
+env APPIMAGE_EXTRACT_AND_RUN=1 npm run tauri build -- --verbose
 ```
