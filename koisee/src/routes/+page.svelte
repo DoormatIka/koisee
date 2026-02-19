@@ -18,7 +18,7 @@
 		selected_dir = selected;
 
 		try {
-			err = await invoke("get_similar_images", {dir: selected});
+			err = await invoke("", {dir: selected});
 		} catch (error: any) {
 			err = error.toString()
 		}
@@ -31,7 +31,6 @@
 
 		(async () => {
 			isAlive = await invoke("get_heartbeat");
-			console.log(isAlive)
 			unlisten = await listen<boolean>("server-status", (event) => {
 				isAlive = event.payload;
 			});

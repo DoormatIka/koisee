@@ -10,6 +10,8 @@
 
 she's still learning, so she isn't available yet... please wait warmly while she's preparing
 
+this is also my first time making a multi-language application.
+
 ## future...
 
 koisee wants to:

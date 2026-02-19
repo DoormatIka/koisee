@@ -11,24 +11,41 @@ use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::time;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct ImageItem {
+pub struct ImageItem {
     paths: [String; 2],
     similarity: f32,
-}
-#[derive(Debug, Serialize, Deserialize)]
-struct ScanResult {
-    matched_images: Vec<ImageItem>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 struct ScanInput {
     dir: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Job {
+    id: String,
+    directory: String
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "status")]
+pub enum ScanIntermediateResult {
+    #[serde(rename = "result")]
+    Result { matched_images: Vec<ImageItem> },
+    #[serde(rename = "error")]
+    Error { error: String },
+    #[serde(rename = "progress")]
+    InProgress,
+    #[serde(rename = "none")]
+    NoneFound,
+}
+
 struct AppState {
     client: reqwest::Client,
     is_server_alive: AtomicBool,
+    queued: Vec<String>,
     child: Mutex<Option<CommandChild>>,
 }
+
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -41,7 +58,7 @@ fn get_heartbeat(state: State<'_, AppState>) -> Result<bool, ()> {
 }
 
 #[tauri::command]
-async fn get_similar_images(state: State<'_, AppState>, dir: String) -> Result<ScanResult, String> {
+async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, String> {
     let is_server_alive = state.is_server_alive.load(Ordering::Relaxed);
     if !is_server_alive {
         return Err(String::from("Server is not online!"));
@@ -54,21 +71,38 @@ async fn get_similar_images(state: State<'_, AppState>, dir: String) -> Result<S
     }
 
     let client = &state.client;
-    let res = client
-        .post("http://localhost:8080/scan")
+    let res = client.post("http://localhost:8080/scan")
         .json(&ScanInput { dir: dir })
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    let res = res.json::<ScanResult>().await.map_err(|e| e.to_string())?;
+    let res = res.text().await.map_err(|e| e.to_string())?;
 
     Ok(res)
+}
+
+#[tauri::command]
+async fn get_scan_result(state: State<'_, AppState>, uuid: String) -> Result<ScanIntermediateResult, String> {
+    let is_server_alive = state.is_server_alive.load(Ordering::Relaxed);
+    if !is_server_alive {
+        return Err(String::from("Server is not online!"));
+    }
+    let client = &state.client;
+    let queue = client.get(format!("http://localhost:8080/scan/{uuid}"))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let queue: ScanIntermediateResult = queue.json()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(queue)
 }
 
 fn setup_heartbeat(handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let client = reqwest::Client::new();
-        let mut interval = time::interval(Duration::from_secs(5));
+        let mut interval = time::interval(Duration::from_secs(3));
 
         loop {
             interval.tick().await;
@@ -178,7 +212,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_heartbeat,
-            get_similar_images
+            queue_scan,
+            get_scan_result,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

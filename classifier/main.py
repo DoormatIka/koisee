@@ -32,10 +32,12 @@ class ScanResult(BaseModel):
 class ScanError(BaseModel):
     status: Literal["error"] = "error"
     error: str
+class ScanInProgress(BaseModel):
+    status: Literal["progress"] = "progress"
 class ScanNoneFound(BaseModel):
     status: Literal["none"] = "none"
 
-ScanIntermediateResult = ScanResult | ScanError | ScanNoneFound
+ScanIntermediateResult = ScanResult | ScanError | ScanNoneFound | ScanInProgress
 
 
 def convert_image_pair_to_scan_result(pairs: Collection[ImagePair]) -> list[ScanItem]:
@@ -57,7 +59,7 @@ class Job:
 
 job_queue = asyncio.Queue[Job]()
 
-job_results: dict[str, ScanResult | ScanError] = dict()
+job_results: dict[str, ScanIntermediateResult] = dict()
 job_res_lock = threading.Lock()
 
 async def scan(dir: Path) -> ScanResult | ScanError:
@@ -76,6 +78,8 @@ async def worker(): # works on the queue.
         item = await job_queue.get()
         try:
             print(f"Processing task: {item}")
+            with job_res_lock:
+                job_results[item.id] = ScanInProgress()
             scan_res = await scan(Path(item.directory))
             with job_res_lock:
                 job_results[item.id] = scan_res
@@ -98,21 +102,21 @@ async def lifespan(_app: FastAPI): # bridge to queue
 
 
 app = FastAPI(lifespan=lifespan)
-@app.post("/queue-dedup")
+
+@app.post("/scan")
 async def queue_dedup(item: ScanInput) -> str:
     job_id = str(uuid4())
     await job_queue.put(Job(id=job_id, directory=item.dir))
 
     return job_id
 
-
-@app.get("/dedup/{uuid}")
+@app.get("/scan/{uuid}")
 async def get_scan(uuid: str) -> ScanIntermediateResult:
     with job_res_lock:
-        if job_results.get(uuid) is None:
+        res = job_results.get(uuid)
+        if res is None:
             return ScanNoneFound()
-
-        return job_results.pop(uuid)
+        return res
 
 @app.get("/heartbeat")
 async def heartbeat():
