@@ -1,7 +1,6 @@
 
 import asyncio
 import numpy as np
-import os
 
 from collections.abc import Generator, Iterable
 from typing import TypeVar, cast
@@ -85,14 +84,7 @@ class HammingClustererFinder():
 
 
         await self.logger.notify(Info(msg="Getting files from disk"))
-
-        n_images = 0
-        cpu_count = os.cpu_count() or 1
-        if cpu_count > 1:
-            await self._create_hashes_multithreading(path_generator, n_images)
-        else:
-            await self._create_hashes_singlethreaded(path_generator, n_images)
-
+        n_images = await self._create_hashes_singlethreaded(path_generator)
 
         await self.logger.notify(Progress(
             path=Path(),
@@ -101,7 +93,8 @@ class HammingClustererFinder():
         ))
         return self.buckets
 
-    async def _create_hashes_singlethreaded(self, path_generator: Generator[Path, None, None], n_images: int):
+    async def _create_hashes_singlethreaded(self, path_generator: Generator[Path, None, None]) -> int:
+        n_images = 0
         for path_chunk in chunked(path_generator, size=8):
             for res, err in _process_chunk(self.hasher, path_chunk):
                 if res is None:
@@ -116,6 +109,8 @@ class HammingClustererFinder():
                     is_complete=False,
                     current=n_images
                 ))
+
+        return n_images
 
     async def _create_hashes_multithreading(self, path_generator: Generator[Path, None, None], n_images: int):
         loop = asyncio.get_running_loop()
