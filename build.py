@@ -9,9 +9,11 @@ import argparse
 parser = argparse.ArgumentParser()
 _ = parser.add_argument("-sn", "--skip-nuitka", help="Skip nuitka compilation", action="store_true")
 _ = parser.add_argument("-st", "--skip-tauri", help="Skip tauri compilation", action="store_true")
+_ = parser.add_argument("-rt", "--run-tauri", help="Run tauri app in dev.", action="store_true")
 args = parser.parse_args()
 skip_nuitka: bool = args.skip_nuitka # pyright: ignore[reportAny]
 skip_tauri: bool = args.skip_tauri # pyright: ignore[reportAny]
+run_tauri: bool = args.run_tauri # pyright: ignore[reportAny]
 
 
 os_name = platform.system()
@@ -24,16 +26,15 @@ if len(target) <= 0:
 
 print(f"======[ BUILDING ON {target} ]=======")
 
-print(f"======[ Building classifer. ]=======")
-classifier_build_path = Path("classifier/").absolute()
-classifier_name = f"classifier-{target}{ext}"
-classifier_build_cmd = f"uv run nuitka --standalone --nofollow-import-to=tkinter --nofollow-import-to=_tkinter --noinclude-dll=\"libtcl*\" --noinclude-dll=\"libtk*\" --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --output-filename={classifier_name} main.py"
 
-if skip_nuitka:
-    print(f"skipped classifier building!")
-else:
+if not skip_nuitka:
+    print(f"======[ Building classifer. ]=======")
+    classifier_build_path = Path("classifier/").absolute()
+    classifier_name = f"classifier-{target}{ext}"
+    classifier_build_cmd = f"uv run nuitka --standalone --nofollow-import-to=tkinter --nofollow-import-to=_tkinter --noinclude-dll=\"libtcl*\" --noinclude-dll=\"libtk*\" --plugin-enable=numpy --plugin-enable=anti-bloat --include-package=imagehash --include-module=main --output-filename={classifier_name} main.py"
     _ = subprocess.run(["uv", "sync"], cwd=classifier_build_path)
     _ = subprocess.run(classifier_build_cmd.split(" "), cwd=classifier_build_path)
+
 
 print(f"======[ Transferring python build to tauri. ]=======")
 source_dir = Path("classifier/main.dist/")
@@ -66,11 +67,17 @@ print(f"Copying {source_dir} to {target_dir}.")
 copy_dir_contents_to_another(source_dir, target_dir)
 
 
-print(f"======[ building tauri application. ]=======")
-koisee_path = Path("koisee/").absolute()
-if os_name == "Windows":
-    print(f"building portable windows binary.")
-    _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--no-bundle"], cwd=koisee_path)
-else:
-    print(f"bundling deb file + portable version.")
-    _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--verbose"], cwd=koisee_path)
+if not skip_tauri:
+    print(f"======[ building tauri application. ]=======")
+    koisee_path = Path("koisee/").absolute()
+    if os_name == "Windows":
+        print(f"building portable windows binary.")
+        _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--no-bundle"], cwd=koisee_path)
+    else:
+        print(f"bundling deb file + portable version.")
+        _ = subprocess.run(["npm", "run", "tauri", "build", "--", "--verbose"], cwd=koisee_path)
+
+if run_tauri:
+    print(f"======[ run tauri application. ]=======")
+    koisee_path = Path("koisee/").absolute()
+    _ = subprocess.run(["npm", "run", "tauri", "dev"], cwd=koisee_path)

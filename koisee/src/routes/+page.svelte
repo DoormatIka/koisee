@@ -5,11 +5,12 @@
 	import Heartbeat from "$lib/components/Heartbeat.svelte";
 	import Icon from "@iconify/svelte"
 
+	let out = $state("");
 	listen("scan-finished", (m) => {
-		console.log(m)
+		out = JSON.stringify(m.payload);
 	})
 	listen("scan-error", (m) => {
-		console.error(m)
+		out = JSON.stringify(m.payload);
 	})
 </script>
 
@@ -33,6 +34,8 @@
 
 	<FilePicker />
 	<Heartbeat />
+
+	<p>{out}</p>
 
 </main>
 
