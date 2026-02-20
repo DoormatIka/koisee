@@ -10,7 +10,7 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::time;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ImageItem {
     paths: [String; 2],
     similarity: f32,
@@ -26,7 +26,7 @@ pub struct Job {
     directory: String
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "status")]
 pub enum ScanIntermediateResult {
     #[serde(rename = "result")]
@@ -42,7 +42,7 @@ pub enum ScanIntermediateResult {
 struct AppState {
     client: reqwest::Client,
     is_server_alive: AtomicBool,
-    queued: Vec<String>,
+    queued: Mutex<Vec<String>>,
     child: Mutex<Option<CommandChild>>,
 }
 
@@ -77,6 +77,11 @@ async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, S
         .await
         .map_err(|e| e.to_string())?;
     let res = res.text().await.map_err(|e| e.to_string())?;
+
+    {
+        let mut queued = state.queued.lock().unwrap();
+        queued.push(res.clone());
+    }
 
     Ok(res)
 }
@@ -190,6 +195,48 @@ fn setup_classifier(handle: AppHandle) {
     });
 }
 
+fn setup_job_emitter(handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let client = reqwest::Client::new();
+        let mut interval = time::interval(Duration::from_secs(2));
+
+        loop {
+            interval.tick().await;
+            let state = handle.state::<AppState>();
+
+            let queued = {
+                let queued = state.queued.lock().unwrap();
+                queued.clone()
+            };
+            for uuid in queued {
+                let intermediate_result = client
+                    .get(format!("http://localhost:8080/scan/{uuid}"))
+                    .timeout(Duration::from_secs(2))
+                    .send()
+                    .await
+                    .unwrap();
+                let intermediate_result = intermediate_result
+                    .json::<ScanIntermediateResult>()
+                    .await
+                    .unwrap();
+                match intermediate_result {
+                    ScanIntermediateResult::Result { matched_images } => {
+                        handle.emit("scan-finished", matched_images).unwrap();
+                    },
+                    ScanIntermediateResult::Error { error } => {
+                        handle.emit("scan-error", error).unwrap();
+                    },
+                    ScanIntermediateResult::InProgress
+                    | ScanIntermediateResult::NoneFound => { 
+                        println!("inprogress, nonefound");
+                    }
+                }
+            }
+
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -199,6 +246,7 @@ pub fn run() {
             let appdata = AppState {
                 client: reqwest::Client::new(),
                 is_server_alive: AtomicBool::new(false),
+                queued: Mutex::new(Vec::new()),
                 child: Mutex::new(None)
             };
             app.manage(appdata);

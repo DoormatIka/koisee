@@ -2,7 +2,6 @@
 	import Icon from "@iconify/svelte"
 	import { open } from "@tauri-apps/plugin-dialog"
 	import { invoke } from "@tauri-apps/api/core";
-	import { listen } from "@tauri-apps/api/event";
 
 	let selected_dir = $state("")
   let err = $state("");
@@ -18,28 +17,13 @@
 		selected_dir = selected;
 
 		try {
-			err = await invoke("", {dir: selected});
+			err = await invoke("queue_scan", {dir: selected});
 		} catch (error: any) {
 			err = error.toString()
 		}
 
   }
 
-	let isAlive = $state(false)
-	$effect(() => {
-		let unlisten: () => void;
-
-		(async () => {
-			isAlive = await invoke("get_heartbeat");
-			unlisten = await listen<boolean>("server-status", (event) => {
-				isAlive = event.payload;
-			});
-		})();
-
-		return () => {
-			if (unlisten) unlisten();
-		};
-	});
 </script>
 
 <main class="flex flex-col justify-center items-center h-full gap-4">
@@ -66,6 +50,5 @@
   </form>
 	<p class="px-5 text-center">{JSON.stringify(err)}</p>
 
-	<p>server alive?: {isAlive ? "yea!" : "nay.."}</p>
 </main>
 
