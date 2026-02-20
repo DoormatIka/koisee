@@ -229,10 +229,10 @@ fn setup_job_emitter(handle: AppHandle) {
                     .unwrap();
                 match intermediate_result {
                     ScanIntermediateResult::Result { matched_images } => {
-                        handle.emit("scan-finished", (uuid, matched_images)).unwrap();
+                        handle.emit("scan-finished", (uuid, ScanIntermediateResult::Result { matched_images })).unwrap();
                     },
                     ScanIntermediateResult::Error { error } => {
-                        handle.emit("scan-error", (uuid, error)).unwrap();
+                        handle.emit("scan-error", (uuid, ScanIntermediateResult::Error { error })).unwrap();
                     },
                     ScanIntermediateResult::InProgress
                     | ScanIntermediateResult::NoneFound => {

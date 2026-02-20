@@ -2,8 +2,10 @@
 <script lang="ts">
 	import { open } from "@tauri-apps/plugin-dialog"
 	import { invoke } from "@tauri-apps/api/core";
+	import { subscribe_event } from "$lib/components/tab-manager.svelte";
 
 	let selected_dir = $state("")
+	let uuid = $state("");
   let err = $state("");
 
   async function scanDirectory() {
@@ -17,7 +19,8 @@
 		selected_dir = selected;
 
 		try {
-			err = await invoke("queue_scan", {dir: selected});
+			uuid = await invoke("queue_scan", {dir: selected});
+			subscribe_event(uuid.replaceAll('"', ''))
 		} catch (error: any) {
 			err = error.toString()
 		}
@@ -30,3 +33,4 @@
 	<button class="btn" onclick={scanDirectory}>Scan</button>
 </form>
 <p class="px-5 text-center">{JSON.stringify(err)}</p>
+<p>{uuid}</p>

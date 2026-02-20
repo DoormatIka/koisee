@@ -1,17 +1,11 @@
 <script lang="ts">
-	import { listen } from "@tauri-apps/api/event";
-
 	import FilePicker from "$lib/components/FilePicker.svelte";
 	import Heartbeat from "$lib/components/Heartbeat.svelte";
 	import Icon from "@iconify/svelte"
 
-	let out = $state("");
-	listen("scan-finished", (m) => {
-		out = JSON.stringify(m.payload);
-	})
-	listen("scan-error", (m) => {
-		out = JSON.stringify(m.payload);
-	})
+	import { events } from "$lib/components/tab-manager.svelte";
+
+	let tabs = $derived(events);
 </script>
 
 <main class="flex flex-col justify-center items-center h-full gap-4">
@@ -35,7 +29,18 @@
 	<FilePicker />
 	<Heartbeat />
 
-	<p>{out}</p>
+	<div class="flex flex-col overflow-auto">
+		{#each tabs as [uuid, state]}
+			{#if state.type === "progress"}
+				<span>loading {uuid}..</span>
+			{:else if state.type === "result"}
+				<span>{JSON.stringify(state.matched_images)}</span>
+			{:else if state.type === "error"}
+				<span class="text-red-500">Error: {state.error}</span>
+			{/if}
+		{/each}
+		<p></p>
+	</div>
 
 </main>
 
