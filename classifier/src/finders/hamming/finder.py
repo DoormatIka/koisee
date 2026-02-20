@@ -7,7 +7,6 @@ from typing import TypeVar, cast
 from numpy.typing import NDArray
 
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
 from itertools import islice
 
 from src.infra.logger import Error, HasherLogger, Info, Progress
@@ -111,30 +110,6 @@ class HammingClustererFinder():
                 ))
 
         return n_images
-
-    async def _create_hashes_multithreading(self, path_generator: Generator[Path, None, None], n_images: int):
-        loop = asyncio.get_running_loop()
-        with ProcessPoolExecutor(max_workers=4) as executor:
-            futures: list[asyncio.Future[list[ImageHashResult]]] = []
-            for path_chunk in chunked(path_generator, size=8):
-                future = loop.run_in_executor(executor, _process_chunk, self.hasher, path_chunk)
-                futures.append(future)
-
-            for completed_future in asyncio.as_completed(futures):
-                chunk_results = await completed_future
-                for res, err in chunk_results:
-                    if res is None:
-                        await self.logger.notify(Error(str(err)))
-                        continue
-                    
-                    self._add_image_to_buckets_(combined=res)
-                    n_images += 1
-
-                    await self.logger.notify(Progress(
-                        path=res.path,
-                        is_complete=False,
-                        current=n_images
-                    ))
 
     def get_similar_objects(self, image_hashes: Buckets) -> set[ImagePair]:
         nearest_matches: set[ImagePair] = set()

@@ -80,7 +80,9 @@ async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, S
 
     {
         let mut queued = state.queued.lock().unwrap();
-        queued.push(res.clone());
+        let uuid = remove_quotes(res.trim()).to_string();
+        println!("uuid found: {uuid}");
+        queued.push(uuid);
     }
 
     Ok(res)
@@ -102,6 +104,12 @@ async fn get_scan_result(state: State<'_, AppState>, uuid: String) -> Result<Sca
         .map_err(|e| e.to_string())?;
 
     Ok(queue)
+}
+
+fn remove_quotes(s: &str) -> &str {
+    s.strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .unwrap_or(s)
 }
 
 fn setup_heartbeat(handle: AppHandle) {
@@ -208,10 +216,10 @@ fn setup_job_emitter(handle: AppHandle) {
                 let queued = state.queued.lock().unwrap();
                 queued.clone()
             };
-            for uuid in queued {
+            let mut updated_queue = Vec::<String>::new();
+            for uuid in queued.iter() {
                 let intermediate_result = client
                     .get(format!("http://localhost:8080/scan/{uuid}"))
-                    .timeout(Duration::from_secs(2))
                     .send()
                     .await
                     .unwrap();
@@ -221,18 +229,21 @@ fn setup_job_emitter(handle: AppHandle) {
                     .unwrap();
                 match intermediate_result {
                     ScanIntermediateResult::Result { matched_images } => {
-                        handle.emit("scan-finished", matched_images).unwrap();
+                        handle.emit("scan-finished", (uuid, matched_images)).unwrap();
                     },
                     ScanIntermediateResult::Error { error } => {
-                        handle.emit("scan-error", error).unwrap();
+                        handle.emit("scan-error", (uuid, error)).unwrap();
                     },
                     ScanIntermediateResult::InProgress
-                    | ScanIntermediateResult::NoneFound => { 
-                        println!("inprogress, nonefound");
+                    | ScanIntermediateResult::NoneFound => {
+                        updated_queue.push(uuid.to_string());
                     }
                 }
             }
 
+            let mut queued = state.queued.lock().unwrap();
+            queued.retain(|v| updated_queue.contains(v));
+            drop(queued);
         }
     });
 }

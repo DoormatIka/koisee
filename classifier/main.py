@@ -60,13 +60,14 @@ class Job:
 job_queue = asyncio.Queue[Job]()
 
 job_results: dict[str, ScanIntermediateResult] = dict()
-job_res_lock = threading.Lock()
+job_res_lock = asyncio.Lock()
 
-async def scan(dir: Path) -> ScanResult | ScanError:
+
+def scan(dir: Path) -> ScanResult | ScanError:
     try:
         if not dir.is_dir():
             raise FileNotFoundError(dir)
-        res = await scan_from_directory(directory=Path(dir), choice=MethodAction.HAMMING)
+        res = asyncio.run(scan_from_directory(directory=Path(dir), choice=MethodAction.HAMMING))
         return ScanResult(matched_images=convert_image_pair_to_scan_result(res))
     except (FileNotFoundError) as e:
         return ScanError(error=f"Directory \"{e}\" not found!")
@@ -78,10 +79,10 @@ async def worker(): # works on the queue.
         item = await job_queue.get()
         try:
             print(f"Processing task: {item}")
-            with job_res_lock:
+            async with job_res_lock:
                 job_results[item.id] = ScanInProgress()
-            scan_res = await scan(Path(item.directory))
-            with job_res_lock:
+            scan_res = await asyncio.to_thread(scan, Path(item.directory))
+            async with job_res_lock:
                 job_results[item.id] = scan_res
         finally:
             print(f"task done.")
@@ -89,30 +90,32 @@ async def worker(): # works on the queue.
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI): # bridge to queue
-    while True:
-        worker_task = asyncio.create_task(worker())
+    # everything, including the heartbeat route, stops to work on this worker() function.
+    # asyncio is probably not the best for this.
+    # spawn a completely different process instead?
+    worker_task = asyncio.create_task(worker())
 
-        yield
+    yield
 
-        _ = worker_task.cancel()
-        try:
-            await worker_task
-        except asyncio.CancelledError:
-            pass
+    _ = worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(lifespan=lifespan)
 
 @app.post("/scan")
 async def queue_dedup(item: ScanInput) -> str:
-    job_id = str(uuid4())
+    job_id = str(uuid4()).strip()
     await job_queue.put(Job(id=job_id, directory=item.dir))
 
     return job_id
 
 @app.get("/scan/{uuid}")
 async def get_scan(uuid: str) -> ScanIntermediateResult:
-    with job_res_lock:
+    async with job_res_lock:
         res = job_results.get(uuid)
         if res is None:
             return ScanNoneFound()
