@@ -1,5 +1,16 @@
 <script lang="ts">
+	import { listen } from "@tauri-apps/api/event";
+
+	import FilePicker from "$lib/components/FilePicker.svelte";
+	import Heartbeat from "$lib/components/Heartbeat.svelte";
 	import Icon from "@iconify/svelte"
+
+	listen("scan-finished", (m) => {
+		console.log(m)
+	})
+	listen("scan-error", (m) => {
+		console.error(m)
+	})
 </script>
 
 <main class="flex flex-col justify-center items-center h-full gap-4">
@@ -20,6 +31,8 @@
 		</span>
 	</span>
 
+	<FilePicker />
+	<Heartbeat />
 
 </main>
 

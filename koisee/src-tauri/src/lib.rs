@@ -253,6 +253,7 @@ pub fn run() {
 
             setup_heartbeat(app.handle().clone());
             setup_classifier(app.handle().clone());
+            setup_job_emitter(app.handle().clone());
 
             Ok(())
         })
