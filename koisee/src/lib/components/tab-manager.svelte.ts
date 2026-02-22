@@ -1,17 +1,18 @@
 import { listen } from "@tauri-apps/api/event";
 
-type ScanResult = {
+export interface MatchedImage {
+  paths: [string, string];
+  similarity: number;
+}
+export type ScanResult = {
   type: "result";
-  matched_images: {
-    paths: [string, string];
-    similarity: number;
-  }[];
+  matched_images: MatchedImage[];
 };
-type ScanError = {
+export type ScanError = {
   type: "error";
   error: string;
 };
-type ScanInProgress = {
+export type ScanInProgress = {
   type: "progress";
 };
 
