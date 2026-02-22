@@ -23,6 +23,7 @@ class ScanInput(BaseModel):
     dir: str
 
 class ScanItem(BaseModel):
+    uuid: str
     paths: tuple[Path, Path]
     similarity: float
 
@@ -44,6 +45,7 @@ def convert_image_pair_to_scan_result(pairs: Collection[ImagePair]) -> list[Scan
     scan_results: list[ScanItem] = []
     for img1, img2 in pairs:
         item = ScanItem(
+            uuid=str(uuid4()),
             paths=(img1.path, img2.path),
             similarity=abs(img1.hash - img2.hash)
         )

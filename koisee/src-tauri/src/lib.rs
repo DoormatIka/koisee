@@ -1,5 +1,5 @@
 use std::{
-    path::{Path, PathBuf}, sync::{
+    fs, path::{Path, PathBuf}, sync::{
         Mutex, atomic::{AtomicBool, Ordering}
     }, time::Duration
 };
@@ -12,6 +12,7 @@ use tokio::time;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ImageItem {
+    uuid: String,
     paths: [String; 2],
     similarity: f32,
 }
@@ -56,6 +57,12 @@ fn greet(name: &str) -> String {
 fn get_heartbeat(state: State<'_, AppState>) -> Result<bool, ()> {
     Ok(state.is_server_alive.load(Ordering::Relaxed))
 }
+
+#[tauri::command]
+async fn remove_file(path: &str) -> Result<(), String> {
+    Ok(fs::remove_file(path).map_err(|e| e.to_string())?)
+}
+
 
 #[tauri::command]
 async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, String> {
@@ -274,6 +281,7 @@ pub fn run() {
             get_heartbeat,
             queue_scan,
             get_scan_result,
+            remove_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

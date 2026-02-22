@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 
 export interface MatchedImage {
+  uuid: string;
   paths: [string, string];
   similarity: number;
 }
@@ -35,6 +36,9 @@ listen("scan-error", (m) => {
 
 export function subscribe_event(uuid: string) {
   events.push([uuid, { type: "progress" }]);
+}
+export function remove_event(index: number) {
+  events.splice(index, 1);
 }
 
 export { events };
