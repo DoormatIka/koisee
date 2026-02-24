@@ -25,10 +25,10 @@ though images are the main focus!
 
 ## building
 
-todo: make a `just` recipe for all of this.
+dependencies: python3.12, uv, rust, npm, nodejs
 
-```
-python build.py
-cd koisee
-env APPIMAGE_EXTRACT_AND_RUN=1 npm run tauri build -- --verbose
-```
+run `python3 build.py` to build this project.
+
+- `--skip-nuitka` - skip nuitka compilation
+- `--skip-tauri` - skip tauri compilation
+- `--run-tauri` - run tauri application

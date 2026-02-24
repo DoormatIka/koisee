@@ -15,6 +15,7 @@ skip_nuitka: bool = args.skip_nuitka # pyright: ignore[reportAny]
 skip_tauri: bool = args.skip_tauri # pyright: ignore[reportAny]
 run_tauri: bool = args.run_tauri # pyright: ignore[reportAny]
 
+# ========================================[ BUILDING ]=========================================== #
 
 os_name = platform.system()
 ext = ".exe" if os_name == "Windows" else ""

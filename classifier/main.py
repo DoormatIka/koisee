@@ -24,7 +24,7 @@ class ScanInput(BaseModel):
 
 class ScanItem(BaseModel):
     uuid: str
-    paths: tuple[Path, Path]
+    paths: list[Path]
     similarity: float
 
 class ScanResult(BaseModel):

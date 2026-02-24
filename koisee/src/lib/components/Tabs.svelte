@@ -4,11 +4,11 @@
 	import Icon from "@iconify/svelte";
 	import TabRow from "./TabRow.svelte";
 
-	async function onRemove(selectedPath: string) {
+	async function onRemove(uuid: string) {
 		// nightmare function, i know. 
 		// the only reason why i used an array for now is because 
 		// Set and Map weren't being reactively updated by svelte. very annoying.
-		const noContents: number[] = [];
+		const noContentTabs: number[] = [];
 
 		for (let i = 0; i < events.length; i++) { 
 			// replace events to use a Map<uuid, ScanIntermediate> in v1.1
@@ -17,17 +17,14 @@
 			if (scanIntermediate.type !== "result") {
 				return;
 			}
-			// replace matched_images to be buckets instead of pairs.
-			scanIntermediate.matched_images = scanIntermediate.matched_images.filter(
-					match => !match.paths.includes(selectedPath)
-			);
+			scanIntermediate.matched_images = scanIntermediate.matched_images.filter(v => v.uuid !== uuid)
 
 			if (scanIntermediate.matched_images.length <= 0) {
-				noContents.push(i);
+				noContentTabs.push(i);
 			}
 		}
 
-		for (const index of noContents.reverse()) {
+		for (const index of noContentTabs.reverse()) {
 			events.splice(index, 1);
 		}
 	}

@@ -1,23 +1,23 @@
 
 <script lang="ts">
 	import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-	import type { MatchedImage } from "./tab-manager.svelte";
+	import type { MatchedBucket } from "./tab-manager.svelte";
 	import Icon from "@iconify/svelte";
 
-	type RowProps = { src: MatchedImage, onRemove: (selectedPath: string) => {} }
+	type RowProps = { src: MatchedBucket, onRemove: (uuid: string) => {} }
 	const { src, onRemove }: RowProps = $props();
 
 	let selectedPath = $state<string | undefined>(undefined);
 	async function deleteFile() {
 		if (selectedPath !== undefined) {
 			// await invoke("remove_file", { path: selectedPath });
-			onRemove(selectedPath)
+			onRemove(src.uuid)
 		}
 	}
 </script>
 
 <form class="flex flex-col flex-1 w-full min-w-0 p-3 bg-base-200 rounded">
-	<div class="flex flex-row min-w-0 gap-2">
+	<div class="flex flex-row min-w-0 gap-2 overflow-x-auto">
 		{#each src.paths as path, i}
 			<label class="flex-1 flex flex-col min-w-0 w-0 rounded cursor-pointer has-checked:bg-base-100 has-checked:ring-1 p-4">
 				<input type="radio" name="selected-image" value={path} bind:group={selectedPath} class="hidden">

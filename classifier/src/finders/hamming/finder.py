@@ -1,5 +1,4 @@
 
-import asyncio
 import numpy as np
 
 from collections.abc import Generator, Iterable

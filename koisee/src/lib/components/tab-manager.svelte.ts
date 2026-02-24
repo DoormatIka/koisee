@@ -1,13 +1,13 @@
 import { listen } from "@tauri-apps/api/event";
 
-export interface MatchedImage {
+export interface MatchedBucket {
   uuid: string;
-  paths: [string, string];
+  paths: string[];
   similarity: number;
 }
 export type ScanResult = {
   type: "result";
-  matched_images: MatchedImage[];
+  matched_images: MatchedBucket[];
 };
 export type ScanError = {
   type: "error";
