@@ -22,9 +22,16 @@ from src.wrappers import MethodAction, scan_from_directory
 class ScanInput(BaseModel):
     dir: str
 
+
+class ImageData(BaseModel):
+    path: Path
+    width: int
+    height: int
+    similarity: int
+
 class ScanItem(BaseModel):
     uuid: str
-    paths: list[tuple[Path, int]]
+    paths: list[ImageData]
 
 class ScanResult(BaseModel):
     status: Literal["result"] = "result"
@@ -43,7 +50,11 @@ ScanIntermediateResult = ScanResult | ScanError | ScanNoneFound | ScanInProgress
 def convert_image_pair_to_scan_result(img_list: Collection[ImageList]) -> list[ScanItem]:
     scan_results: list[ScanItem] = []
     for img in img_list:
-        im = [(Path(a.path), img[0].hash - a.hash) for a in img]
+        im: list[ImageData] = []
+        for i in img:
+            similarity = img[0].hash - i.hash
+            data = ImageData(path=i.path, height=i.height, width=i.width, similarity=similarity)
+            im.append(data)
         item = ScanItem(
             uuid=str(uuid4()),
             paths=im,

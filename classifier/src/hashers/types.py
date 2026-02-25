@@ -9,7 +9,8 @@ import imagehash
 class CombinedImageHash:
     path: Path
     hash: imagehash.ImageHash
-    pixel_count: int
+    width: int
+    height: int
     @override
     def __hash__(self) -> int:
         return hash(self.path)

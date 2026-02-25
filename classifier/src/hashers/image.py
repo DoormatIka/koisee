@@ -16,12 +16,13 @@ class ImageHasher:
         ImageFile.LOAD_TRUNCATED_IMAGES = False
 
         try:
-            phash = self.global_phash(image_path)
+            phash, width, height = self.global_phash(image_path)
 
             return CombinedImageHash(
                 path=image_path,
                 hash=phash,
-                pixel_count=100 # PLACEHOLDER
+                width=width,
+                height=height,
             ), None
         except (UnidentifiedImageError, OSError) as e:
             return None, str(e)
@@ -33,7 +34,7 @@ class ImageHasher:
         canvas.paste(image, mask=image)
         return canvas.convert('RGB')
 
-    def _pil_grayscale_convert_to_np_arr(self, p: Path):
+    def _pil_grayscale_convert_to_np_arr(self, p: Path) -> tuple[np.ndarray, int, int]:
         with Image.open(p) as img:
             grayscale_img = img.convert('L')
 
@@ -43,13 +44,13 @@ class ImageHasher:
             arr = np.array(resized_img, dtype=np.uint8)
             del resized_img
 
-            return arr
+            return (arr, img.width, img.height)
 
-    def global_phash(self, p: Path) -> imagehash.ImageHash:
+    def global_phash(self, p: Path) -> tuple[imagehash.ImageHash, int, int]:
         """
         Converts an image into a perceptual hash.
         """
-        arr = self._pil_grayscale_convert_to_np_arr(p)
+        arr, width, height = self._pil_grayscale_convert_to_np_arr(p)
 
         img = Image.new(mode="L", size=(self.size, self.size))
         quantiles = np.arange(100)
@@ -60,7 +61,7 @@ class ImageHasher:
         hashed = imagehash.phash(image=img)
         del img
 
-        return hashed
+        return (hashed, width, height)
 
 def imagehash_to_int(h: imagehash.ImageHash) -> int:
     arr = h.hash # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
