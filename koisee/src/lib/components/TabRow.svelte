@@ -7,10 +7,14 @@
 	type RowProps = { src: MatchedBucket, onRemove: (uuid: string) => {} }
 	const { src, onRemove }: RowProps = $props();
 
-	let selectedPath = $state<string | undefined>(undefined);
+	console.log(src)
+
+	let selectedPaths = $state<string[]>([]);
 	async function deleteFile() {
-		if (selectedPath !== undefined) {
+		for (const f of selectedPaths) {
 			// await invoke("remove_file", { path: selectedPath });
+		}
+		if (selectedPaths.length >= 0) {
 			onRemove(src.uuid)
 		}
 	}
@@ -18,16 +22,15 @@
 
 <form class="flex flex-col flex-1 w-full min-w-0 p-3 bg-base-200 rounded">
 	<div class="flex flex-row min-w-0 gap-2 overflow-x-auto">
-		{#each src.paths as [path, similarity], i}
-			<label class="flex-1 flex flex-col min-w-0 w-0 rounded cursor-pointer has-checked:bg-base-100 has-checked:ring-1 p-4">
-				<input type="radio" name="selected-image" value={path} bind:group={selectedPath} class="hidden">
-				<img loading="lazy" class="h-auto max-h-[33vh] w-full object-cover" src={convertFileSrc(path)} alt="Image #{i}">
-				<p class="py-1 break-all">{path} ({similarity})</p>
+		{#each src.paths as image, i}
+			<label class="flex flex-col flex-none rounded cursor-pointer has-checked:bg-base-100 has-checked:ring-1 m-4 p-4">
+				<input type="checkbox" name="selected-image" value={image.path} bind:group={selectedPaths} class="hidden">
+				<img loading="lazy" class="h-auto max-h-[33vh] w-full object-cover" src={convertFileSrc(image.path)} alt="Image #{i}">
+				<p class="py-1 break-all">{image.path} ({image.width}x{image.height}) ({image.similarity})</p>
 			</label>
 		{/each}
 	</div>
-	<div class="flex flex-row min-w-0 gap-2 h-14 items-center justify-between">
-		<p class="text-center text-xl">Score: {src.similarity}</p>
+	<div class="flex flex-row-reverse min-w-0 gap-2 h-14 items-center justify-between">
 		<div>
 			<button type="button" onclick={deleteFile} class="btn btn-circle btn-primary">
 				<Icon icon="material-symbols:delete-rounded" width="24" height="24" />

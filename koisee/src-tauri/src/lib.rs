@@ -16,9 +16,17 @@ struct ScanInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+struct ImageData {
+  path: String,
+  width: i32,
+  height: i32,
+  similarity: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ImageItem {
     uuid: String,
-    paths: Vec<(String, i32)>,
+    paths: Vec<ImageData>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Job {
