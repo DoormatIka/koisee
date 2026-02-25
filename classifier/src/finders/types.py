@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Protocol, TypeVar, Generic
 from src.hashers.types import CombinedImageHash
 
-type ImagePair = tuple[CombinedImageHash, CombinedImageHash]
+type ImageList = list[CombinedImageHash]
 
 A = TypeVar('A')
 Objects = TypeVar('Objects', covariant=True)

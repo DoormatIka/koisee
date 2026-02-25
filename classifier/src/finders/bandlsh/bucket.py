@@ -1,7 +1,7 @@
 
 
 from imagehash import ImageHash
-from hashers.image import ImageHasher
+from src.hashers.image import ImageHasher
 
 
 class LSHIndex:

@@ -1,7 +1,6 @@
 
 from .hamming import HammingBucket, HammingClustererFinder, Buckets, Bucket
-from .bruteforce import BruteForceFinder
-from .types import FinderInterface, ImagePair
+from .types import FinderInterface, ImageList
 
 __all__ = [
     "HammingBucket", 
@@ -9,8 +8,7 @@ __all__ = [
     "Buckets", 
     "Bucket",
 
-    "BruteForceFinder",
 
     "FinderInterface",
-    "ImagePair",
+    "ImageList",
 ]

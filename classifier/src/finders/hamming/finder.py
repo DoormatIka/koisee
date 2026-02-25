@@ -9,12 +9,11 @@ from pathlib import Path
 from itertools import islice
 
 from src.infra.logger import Error, HasherLogger, Info, Progress
-from src.hashers import ImageHashResult
 from src.hashers.types import CombinedImageHash
 from src.hashers.image import ImageHasher
 
-from src.finders.types import ImagePair
-from src.finders.helpers import is_similar_image, get_supported_extensions
+from src.finders.types import ImageList
+from src.finders.helpers import get_supported_extensions
 
 from .bucket import HammingBucket
 
@@ -110,23 +109,33 @@ class HammingClustererFinder():
 
         return n_images
 
-    def get_similar_objects(self, image_hashes: Buckets) -> set[ImagePair]:
-        nearest_matches: set[ImagePair] = set()
-        path_matches: set[tuple[str, ...]] = set()
+    def get_similar_objects(self, image_hashes: Buckets, threshold: int = 10) -> list[ImageList]:
+        nearest_matches: list[ImageList] = list()
+        seen_path: set[Path] = set()
 
         for container in image_hashes:
-            # assuming the images are arranged to their closest container.
-            for i, img1 in enumerate(container.bucket):
-                for img2 in container.bucket[i + 1:]:
-                    pair = tuple(sorted([str(img1.path), str(img2.path)]))
-                    if pair in path_matches:
-                        continue
+            for img1 in container.bucket:
+                if img1.path in seen_path:
+                    continue
 
-                    if is_similar_image(img1, img2) is not None:
-                        nearest_matches.add((img1, img2))
-                        path_matches.add(pair)
+                best_match: ImageList | None = None
+                best_score = threshold + 1  # sentinel: must beat threshold to qualify
 
-        return nearest_matches
+                for similars in nearest_matches:
+                    representative_img = similars[0]
+                    score = representative_img.hash - img1.hash
+                    if score <= threshold and score < best_score:
+                        best_score = score
+                        best_match = similars
+
+                if best_match is not None:
+                    best_match.append(img1)
+                else:
+                    nearest_matches.append([img1])
+
+                seen_path.add(img1.path)
+
+        return [match for match in nearest_matches if len(match) > 1]
 
 def _process_chunk(hasher: ImageHasher, paths: list[Path]):
     # This runs in the worker process

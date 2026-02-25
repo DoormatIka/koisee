@@ -16,7 +16,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from src.finders import ImagePair
+from src.finders.types import ImageList
 from src.wrappers import MethodAction, scan_from_directory
 
 class ScanInput(BaseModel):
@@ -24,8 +24,7 @@ class ScanInput(BaseModel):
 
 class ScanItem(BaseModel):
     uuid: str
-    paths: list[Path]
-    similarity: float
+    paths: list[tuple[Path, int]]
 
 class ScanResult(BaseModel):
     status: Literal["result"] = "result"
@@ -41,13 +40,13 @@ class ScanNoneFound(BaseModel):
 ScanIntermediateResult = ScanResult | ScanError | ScanNoneFound | ScanInProgress
 
 
-def convert_image_pair_to_scan_result(pairs: Collection[ImagePair]) -> list[ScanItem]:
+def convert_image_pair_to_scan_result(img_list: Collection[ImageList]) -> list[ScanItem]:
     scan_results: list[ScanItem] = []
-    for img1, img2 in pairs:
+    for img in img_list:
+        im = [(Path(a.path), img[0].hash - a.hash) for a in img]
         item = ScanItem(
             uuid=str(uuid4()),
-            paths=(img1.path, img2.path),
-            similarity=abs(img1.hash - img2.hash)
+            paths=im,
         )
         scan_results.append(item)
 
