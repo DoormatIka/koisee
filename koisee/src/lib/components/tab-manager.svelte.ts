@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 
 export interface MatchedBucket {
   uuid: string;
-  paths: string[];
+  paths: [string, number][];
   similarity: number;
 }
 export type ScanResult = {

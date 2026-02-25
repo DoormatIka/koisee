@@ -18,11 +18,11 @@
 
 <form class="flex flex-col flex-1 w-full min-w-0 p-3 bg-base-200 rounded">
 	<div class="flex flex-row min-w-0 gap-2 overflow-x-auto">
-		{#each src.paths as path, i}
+		{#each src.paths as [path, similarity], i}
 			<label class="flex-1 flex flex-col min-w-0 w-0 rounded cursor-pointer has-checked:bg-base-100 has-checked:ring-1 p-4">
 				<input type="radio" name="selected-image" value={path} bind:group={selectedPath} class="hidden">
 				<img loading="lazy" class="h-auto max-h-[33vh] w-full object-cover" src={convertFileSrc(path)} alt="Image #{i}">
-				<p class="py-1 break-all">{path}</p>
+				<p class="py-1 break-all">{path} ({similarity})</p>
 			</label>
 		{/each}
 	</div>

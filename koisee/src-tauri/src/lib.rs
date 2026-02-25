@@ -10,17 +10,16 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
 use tokio::time;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ImageItem {
-    uuid: String,
-    paths: [String; 2],
-    similarity: f32,
-}
 #[derive(Debug, Serialize, Deserialize)]
 struct ScanInput {
     dir: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ImageItem {
+    uuid: String,
+    paths: Vec<(String, i32)>,
+}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Job {
     id: String,
