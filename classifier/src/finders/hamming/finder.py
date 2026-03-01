@@ -1,4 +1,5 @@
 
+import asyncio
 import numpy as np
 
 from collections.abc import Generator, Iterable
@@ -72,40 +73,57 @@ class HammingClustererFinder():
         for bucket in self.buckets:
             bucket.bucket.clear()
 
+    @staticmethod
+    def safe_path_generator(directory: Path, exts: list[str]):
+        for ext in exts:
+            try:
+                for p in Path(directory).rglob(f"*{ext}"):
+                    yield p
+            except PermissionError as e:
+                print(f"[SCAN] Permission denied: {e}")
+
     async def create_hashes_from_directory(self, directory: Path) -> Buckets:
         self.clear_buckets()
 
         exts = get_supported_extensions()
 
-        path_generator = (p for ext in exts for p in Path(directory).rglob(f"*{ext}"))
-
+        path_generator = self.safe_path_generator(directory, exts)
+        print("[SCAN create_hashes_from_directory] Starting hash creation")
 
         await self.logger.notify(Info(msg="Getting files from disk"))
+        print("[SCAN create_hashes_from_directory] Getting files from disk.")
+
         n_images = await self._create_hashes_singlethreaded(path_generator)
+
+        print(f"[SCAN create_hashes_from_directory] Hashing done for {n_images} images.")
 
         await self.logger.notify(Progress(
             path=Path(),
             is_complete=True,
             current=n_images
         ))
+        print(f"[SCAN create_hashes_from_directory] Similarity done, {len(self.buckets)}")
         return self.buckets
 
     async def _create_hashes_singlethreaded(self, path_generator: Generator[Path, None, None]) -> int:
         n_images = 0
-        for path_chunk in chunked(path_generator, size=8):
-            for res, err in _process_chunk(self.hasher, path_chunk):
-                if res is None:
-                    await self.logger.notify(Error(str(err)))
-                    continue
+        print(f"[SCAN _create_hashes_singlethreaded] Started single_threaded hashing.")
+        for i, path in enumerate(path_generator):
+            print(f"[SCAN chunked path] Started chunk {i}")
+            hashed_img, err = await asyncio.to_thread(self.hasher.create_hash_from_image, path)
+            if hashed_img is None:
+                await self.logger.notify(Error(err or "Unknown error."))
+                continue
 
-                self._add_image_to_buckets_(combined=res)
-                n_images += 1
+            print(f"[SCAN _create_hashes_singlethreaded] Adding image to bucket")
+            self._add_image_to_buckets_(combined=hashed_img)
+            n_images += 1
 
-                await self.logger.notify(Progress(
-                    path=res.path,
-                    is_complete=False,
-                    current=n_images
-                ))
+            await self.logger.notify(Progress(
+                path=hashed_img.path,
+                is_complete=False,
+                current=n_images
+            ))
 
         return n_images
 
@@ -136,10 +154,6 @@ class HammingClustererFinder():
                 seen_path.add(img1.path)
 
         return [match for match in nearest_matches if len(match) > 1]
-
-def _process_chunk(hasher: ImageHasher, paths: list[Path]):
-    # This runs in the worker process
-    return [hasher.create_hash_from_image(p) for p in paths]
 
 def nparr_bool_to_int(arr: np.ndarray):
     packed = np.packbits(arr)

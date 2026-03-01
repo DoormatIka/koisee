@@ -183,8 +183,15 @@ fn setup_classifier(handle: AppHandle) {
     let exec_path = get_classifier_path(&handle);
     let lib_exec_path = exec_path.clone();
     let lib_path = lib_exec_path.parent().unwrap();
+    let clean_path: String = std::env::var("PATH")
+        .unwrap_or_default()
+        .split(';')
+        .filter(|p| !p.contains("target\\debug\\build"))
+        .collect::<Vec<_>>()
+        .join(";");
     let classifier_sidecar = handle.shell().command(exec_path)
-        .current_dir(lib_path.to_string_lossy().to_string());
+        .current_dir(lib_path.to_string_lossy().to_string())
+        .env("PATH", clean_path);
 
     let (mut rx, child) = classifier_sidecar
         .spawn()

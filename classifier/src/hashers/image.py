@@ -13,11 +13,13 @@ class ImageHasher:
         self.size = size
 
     def create_hash_from_image(self, image_path: Path) -> ImageHashResult:
+        print(f"[HASHER] Opening {image_path}")
         ImageFile.LOAD_TRUNCATED_IMAGES = False
 
         try:
             phash, width, height = self.global_phash(image_path)
 
+            print(f"[HASHER] Done {image_path}")
             return CombinedImageHash(
                 path=image_path,
                 hash=phash,
@@ -25,6 +27,7 @@ class ImageHasher:
                 height=height,
             ), None
         except (UnidentifiedImageError, OSError) as e:
+            print(f"[HASHER] Error! {e}")
             return None, str(e)
 
     def alpharemover(self, image: Image.Image):
@@ -50,12 +53,17 @@ class ImageHasher:
         """
         Converts an image into a perceptual hash.
         """
+        print(f"[PHASH] loading array")
         arr, width, height = self._pil_grayscale_convert_to_np_arr(p)
-
+        print(f"[PHASH] array loaded {arr.shape}")
+        
         img = Image.new(mode="L", size=(self.size, self.size))
         quantiles = np.arange(100)
+        print(f"[PHASH] computing percentile")
         quantiles_values = np.percentile(arr, quantiles)
+        print(f"[PHASH] computing interp")
         zdata = (np.interp(arr, quantiles_values, quantiles) / 100 * 255).astype(np.uint8)
+        print(f"[PHASH] done")
         img.putdata(zdata.flatten())
 
         hashed = imagehash.phash(image=img)

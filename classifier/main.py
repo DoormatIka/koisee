@@ -17,7 +17,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from src.finders.types import ImageList
-from src.wrappers import MethodAction, scan_from_directory
+from src.infra.logger import Error, Info, Logger, Warn
+from src.hashers import ImageHasher
+from src.finders import HammingClustererFinder
 
 class ScanInput(BaseModel):
     dir: str
@@ -69,18 +71,24 @@ class Job:
     id: str
     directory: str
 
-job_queue = asyncio.Queue[Job]()
+job_queue: asyncio.Queue[Job]
 
 job_results: dict[str, ScanIntermediateResult] = dict()
-job_res_lock = asyncio.Lock()
+job_res_lock: asyncio.Lock
+log: Logger
+imghasher: ImageHasher
 
 
-def scan(dir: Path) -> ScanResult | ScanError:
+async def scan(dir: Path) -> ScanResult | ScanError:
     try:
         if not dir.is_dir():
             raise FileNotFoundError(dir)
-        res = asyncio.run(scan_from_directory(directory=Path(dir), choice=MethodAction.HAMMING))
-        return ScanResult(matched_images=convert_image_pair_to_scan_result(res))
+
+        bf = HammingClustererFinder(hasher=imghasher, logger=log)
+
+        hashes = await bf.create_hashes_from_directory(Path(dir))
+        similar_images = bf.get_similar_objects(hashes)
+        return ScanResult(matched_images=convert_image_pair_to_scan_result(similar_images))
     except (FileNotFoundError) as e:
         return ScanError(error=f"Directory \"{e}\" not found!")
     except (Exception) as e:
@@ -93,7 +101,7 @@ async def worker(): # works on the queue.
             print(f"Processing task: {item}")
             async with job_res_lock:
                 job_results[item.id] = ScanInProgress()
-            scan_res = await asyncio.to_thread(scan, Path(item.directory))
+            scan_res = await scan(Path(item.directory))
             async with job_res_lock:
                 job_results[item.id] = scan_res
         finally:
@@ -105,6 +113,16 @@ async def lifespan(_app: FastAPI): # bridge to queue
     # everything, including the heartbeat route, stops to work on this worker() function.
     # asyncio is probably not the best for this.
     # spawn a completely different process instead?
+    global job_queue, job_res_lock, log, imghasher
+    job_queue = asyncio.Queue()
+    job_res_lock = asyncio.Lock()
+    log = Logger()
+    imghasher = ImageHasher()
+
+    log.subscribe(Info, print)
+    log.subscribe(Warn, print)
+    log.subscribe(Error, print)
+
     worker_task = asyncio.create_task(worker())
 
     yield
@@ -143,6 +161,12 @@ def watch_stdin():
     os._exit(0)
 
 if __name__ == "__main__":
+    with open("env_dump.txt", "w") as f:
+        f.write(f"cwd: {os.getcwd()}\n")
+        f.write(f"argv: {sys.argv}\n")
+        for k, v in os.environ.items():
+            f.write(f"{k}={v}\n")
+
     threading.Thread(target=watch_stdin, daemon=True).start()
 
     multiprocessing.set_start_method("spawn", force=True)
