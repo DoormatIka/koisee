@@ -7,11 +7,10 @@
 	type RowProps = { src: MatchedBucket, onRemove: (uuid: string) => {} }
 	const { src, onRemove }: RowProps = $props();
 
-	console.log(src)
 
 	let selectedPaths = $state<string[]>([]);
 	async function deleteFile() {
-		for (const f of selectedPaths) {
+		for (const path of selectedPaths) {
 			// await invoke("remove_file", { path: selectedPath });
 		}
 		if (selectedPaths.length >= 0) {

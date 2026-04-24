@@ -7,8 +7,6 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, RunEvent};
 use tauri::{AppHandle, Manager, Runtime, State};
-use tauri_plugin_shell::{ShellExt, process::{CommandEvent, CommandChild}};
-use tokio::time;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ScanInput {
@@ -48,10 +46,7 @@ pub enum ScanIntermediateResult {
 }
 
 struct AppState {
-    client: reqwest::Client,
-    is_server_alive: AtomicBool,
     queued: Mutex<Vec<String>>,
-    child: Mutex<Option<CommandChild>>,
 }
 
 
@@ -62,7 +57,7 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn get_heartbeat(state: State<'_, AppState>) -> Result<bool, ()> {
-    Ok(state.is_server_alive.load(Ordering::Relaxed))
+    Ok(true)
 }
 
 #[tauri::command]
@@ -73,10 +68,6 @@ async fn remove_file(path: &str) -> Result<(), String> {
 
 #[tauri::command]
 async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, String> {
-    let is_server_alive = state.is_server_alive.load(Ordering::Relaxed);
-    if !is_server_alive {
-        return Err(String::from("Server is not online!"));
-    }
     let input_path = Path::new(&dir);
     if !input_path.is_dir() {
         return Err(String::from(
@@ -84,40 +75,12 @@ async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, S
         ));
     }
 
-    let client = &state.client;
-    let res = client.post("http://localhost:8080/scan")
-        .json(&ScanInput { dir: dir })
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let res = res.text().await.map_err(|e| e.to_string())?;
-
-    {
-        let mut queued = state.queued.lock().unwrap();
-        let uuid = remove_quotes(res.trim()).to_string();
-        println!("uuid found: {uuid}");
-        queued.push(uuid);
-    }
-
-    Ok(res)
+    Err(String::from("In progress."))
 }
 
 #[tauri::command]
 async fn get_scan_result(state: State<'_, AppState>, uuid: String) -> Result<ScanIntermediateResult, String> {
-    let is_server_alive = state.is_server_alive.load(Ordering::Relaxed);
-    if !is_server_alive {
-        return Err(String::from("Server is not online!"));
-    }
-    let client = &state.client;
-    let queue = client.get(format!("http://localhost:8080/scan/{uuid}"))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let queue: ScanIntermediateResult = queue.json()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(queue)
+    Ok(ScanIntermediateResult::NoneFound)
 }
 
 fn remove_quotes(s: &str) -> &str {
@@ -126,159 +89,15 @@ fn remove_quotes(s: &str) -> &str {
         .unwrap_or(s)
 }
 
-fn setup_heartbeat(handle: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let client = reqwest::Client::new();
-        let mut interval = time::interval(Duration::from_secs(3));
-
-        loop {
-            interval.tick().await;
-            let state = handle.state::<AppState>();
-
-            let is_alive = client
-                .get("http://localhost:8080/heartbeat")
-                .timeout(Duration::from_secs(2))
-                .send()
-                .await
-                .is_ok();
-            state.is_server_alive.store(is_alive, Ordering::Relaxed);
-
-            handle.emit("server-status", is_alive).unwrap();
-        }
-    });
-}
-
-fn get_classifier_path<R: Runtime>(handle: &AppHandle<R>) -> PathBuf {
-    // OS picking
-    let target = env!("APP_TARGET");
-    let binary_name = if cfg!(windows) {
-        format!("classifier-{}.exe", target)
-    } else {
-        format!("classifier-{}", target)
-    };
-
-    // standard path
-    let installed_path = handle.path().resource_dir()
-        .expect("Failed to resolve resource directory")
-        .join("binaries")
-        .join("classifier-bundle")
-        .join(&binary_name);
-
-    // portable path
-    if !installed_path.exists() {
-        let exe_path = std::env::current_exe().expect("Failed to get current exe path");
-        let app_dir = exe_path.parent().expect("Failed to get parent dir");
-        
-        return app_dir
-            .join("binaries")
-            .join("classifier-bundle")
-            .join(&binary_name);
-    }
-
-    installed_path
-}
-
-
-fn setup_classifier(handle: AppHandle) {
-    let exec_path = get_classifier_path(&handle);
-    let lib_exec_path = exec_path.clone();
-    let lib_path = lib_exec_path.parent().unwrap();
-    let classifier_sidecar = handle.shell().command(exec_path)
-        .current_dir(lib_path.to_string_lossy().to_string());
-
-    let (mut rx, child) = classifier_sidecar
-        .spawn()
-        .expect("Failed to spawn sidecar.");
-
-    {
-        let guard_handle = handle.clone();
-        let appdata = guard_handle.state::<AppState>();
-        let mut guard = appdata.child.lock().unwrap();
-        *guard = Some(child);
-    }
-
-    
-    tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            match event {
-                CommandEvent::Stdout(line_bytes) => {
-                    let line = String::from_utf8_lossy(&line_bytes);
-                    print!("out: {}", line);
-                    handle.emit("message", Some(format!("'{}'", line)))
-                        .expect("failed to emit event");
-                },
-                CommandEvent::Stderr(line_bytes) => {
-                    let line = String::from_utf8_lossy(&line_bytes);
-                    print!("err: {}", line);
-                }
-                _ => {}
-            };
-        }
-    });
-}
-
-fn setup_job_emitter(handle: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let client = reqwest::Client::new();
-        let mut interval = time::interval(Duration::from_secs(2));
-
-        loop {
-            interval.tick().await;
-            let state = handle.state::<AppState>();
-
-            let queued = {
-                let queued = state.queued.lock().unwrap();
-                queued.clone()
-            };
-            let mut updated_queue = Vec::<String>::new();
-            for uuid in queued.iter() {
-                let intermediate_result = client
-                    .get(format!("http://localhost:8080/scan/{uuid}"))
-                    .send()
-                    .await
-                    .unwrap();
-                let intermediate_result = intermediate_result
-                    .json::<ScanIntermediateResult>()
-                    .await
-                    .unwrap();
-                match intermediate_result {
-                    ScanIntermediateResult::Result { matched_images } => {
-                        handle.emit("scan-finished", (uuid, ScanIntermediateResult::Result { matched_images })).unwrap();
-                    },
-                    ScanIntermediateResult::Error { error } => {
-                        handle.emit("scan-error", (uuid, ScanIntermediateResult::Error { error })).unwrap();
-                    },
-                    ScanIntermediateResult::InProgress
-                    | ScanIntermediateResult::NoneFound => {
-                        updated_queue.push(uuid.to_string());
-                    }
-                }
-            }
-
-            let mut queued = state.queued.lock().unwrap();
-            queued.retain(|v| updated_queue.contains(v));
-            drop(queued);
-        }
-    });
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
             let appdata = AppState {
-                client: reqwest::Client::new(),
-                is_server_alive: AtomicBool::new(false),
                 queued: Mutex::new(Vec::new()),
-                child: Mutex::new(None)
             };
             app.manage(appdata);
-
-            setup_heartbeat(app.handle().clone());
-            setup_classifier(app.handle().clone());
-            setup_job_emitter(app.handle().clone());
 
             Ok(())
         })
@@ -295,11 +114,7 @@ pub fn run() {
         .run(|handle, event| match event {
             RunEvent::Exit => {
                 let appdata = handle.state::<AppState>();
-                let mut state = appdata.child.lock().unwrap();
-                if let Some(child) = state.take() {
-                    let _ = child.kill().unwrap();
-                    println!("killing child.");
-                }
+                println!("killing child.");
             },
             _ => {}
         });
