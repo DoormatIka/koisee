@@ -19,7 +19,7 @@
 		selected_dir = selected;
 
 		try {
-			uuid = await invoke("queue_scan", {dir: selected});
+			uuid = await invoke("scan", {dir: selected});
 			subscribe_event(uuid.replaceAll('"', ''))
 		} catch (error: any) {
 			err = error.toString()
