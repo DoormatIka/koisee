@@ -1,63 +1,26 @@
-use std::{
-    fs, path::{Path, PathBuf}, sync::{
-        Mutex, atomic::{AtomicBool, Ordering}
-    }, time::Duration
+use std::{fs, path::Path};
+
+use finder::{
+    finder::HammingClustererFinder,
+    logger::{LogMsg, LoggerHandler, LoggerSender},
 };
-
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, RunEvent};
-use tauri::{AppHandle, Manager, Runtime, State};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ScanInput {
-    dir: String,
-}
+use tauri::{Manager, RunEvent, State};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ImageData {
-  path: String,
-  width: i32,
-  height: i32,
-  similarity: i32,
+    path: String,
+    dimensions: (u32, u32),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ImageItem {
-    uuid: String,
-    paths: Vec<ImageData>,
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Job {
-    id: String,
-    directory: String
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "status")]
-pub enum ScanIntermediateResult {
-    #[serde(rename = "result")]
-    Result { matched_images: Vec<ImageItem> },
-    #[serde(rename = "error")]
-    Error { error: String },
-    #[serde(rename = "progress")]
-    InProgress,
-    #[serde(rename = "none")]
-    NoneFound,
+pub struct MatchItem {
+    items: Vec<ImageData>,
+    average_similarity: f32,
 }
 
 struct AppState {
-    queued: Mutex<Vec<String>>,
-}
-
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn get_heartbeat(state: State<'_, AppState>) -> Result<bool, ()> {
-    Ok(true)
+    sender: LoggerSender,
 }
 
 #[tauri::command]
@@ -65,9 +28,8 @@ async fn remove_file(path: &str) -> Result<(), String> {
     Ok(fs::remove_file(path).map_err(|e| e.to_string())?)
 }
 
-
 #[tauri::command]
-async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, String> {
+async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageData>>, String> {
     let input_path = Path::new(&dir);
     if !input_path.is_dir() {
         return Err(String::from(
@@ -75,47 +37,61 @@ async fn queue_scan(state: State<'_, AppState>, dir: String) -> Result<String, S
         ));
     }
 
-    Err(String::from("In progress."))
+    let mut clusterer = HammingClustererFinder::new(state.sender.clone());
+    clusterer.scan_directory(dir);
+    let best_matches = clusterer.get_clustered_duplicates(5);
+    let matches: Vec<Vec<ImageData>> = best_matches
+        .into_iter()
+        .map(|t| {
+            t.into_iter()
+                .map(|v| ImageData {
+                    path: v.path,
+                    dimensions: v.dimensions,
+                })
+                .collect()
+        })
+        .collect();
+
+    Ok(matches)
 }
 
-#[tauri::command]
-async fn get_scan_result(state: State<'_, AppState>, uuid: String) -> Result<ScanIntermediateResult, String> {
-    Ok(ScanIntermediateResult::NoneFound)
-}
-
-fn remove_quotes(s: &str) -> &str {
-    s.strip_prefix('"')
-        .and_then(|s| s.strip_suffix('"'))
-        .unwrap_or(s)
+fn logger(msg: &LogMsg) {
+    match msg {
+        LogMsg::Info(s) => println!("[INFO]: {}", s),
+        LogMsg::Hash(s) => println!("[HASHING] \"{}\"", s),
+        LogMsg::Decoding(s) => println!("[DECODING] \"{}\"", s),
+        LogMsg::Finished(s) => println!("   [FINISHED] \"{}\"", s),
+        LogMsg::ImageTotal(n) => println!("[TOTAL] \"{}\"", n),
+        LogMsg::Error(err) => println!("[ERR] {}", err),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let (handle, sender) = LoggerHandler::new();
+    let logger_thread = std::thread::spawn(|| handle.blocking_run(logger));
+
+    let mut logger_thread = Some(logger_thread);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
             let appdata = AppState {
-                queued: Mutex::new(Vec::new()),
+                sender: sender.clone(),
             };
             app.manage(appdata);
-
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            greet,
-            get_heartbeat,
-            queue_scan,
-            get_scan_result,
-            remove_file,
-        ])
+        .invoke_handler(tauri::generate_handler![scan, remove_file])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
-        .run(|handle, event| match event {
-            RunEvent::Exit => {
-                let appdata = handle.state::<AppState>();
-                println!("killing child.");
-            },
+        .run(move |_, event| match event {
+            RunEvent::ExitRequested { .. } => {
+                if let Some(thread) = logger_thread.take() {
+                    thread.join().expect("logger thread panicked.");
+                }
+            }
             _ => {}
         });
 }
