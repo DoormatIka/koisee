@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{fs, path::Path};
@@ -7,6 +7,7 @@ use finder::finder::PerceptualHash;
 use finder::{
     finder::HammingClustererFinder,
     logger::{LogMsg, LoggerHandler, LoggerSender},
+    state,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
@@ -25,7 +26,7 @@ pub struct MatchItem {
 
 struct AppState {
     sender: Mutex<Option<LoggerSender>>,
-    cancelled: Arc<AtomicBool>,
+    scan_state: Arc<AtomicU8>,
     logger_thread: Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -64,13 +65,14 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
         return Err("App is shutting down.".into());
     };
 
-    let cancelled = state.cancelled.clone();
+    let scan_state = state.scan_state.clone();
+    scan_state.store(state::SCANNING, Ordering::Relaxed);
 
     let handle = tokio::task::spawn_blocking(move || {
-        let mut clusterer = HammingClustererFinder::new(sender, cancelled.clone());
+        let mut clusterer = HammingClustererFinder::new(sender, scan_state.clone());
         clusterer.scan_directory(dir);
         let duplicates = clusterer.get_clustered_duplicates(5); // takes a long while.
-        cancelled.store(false, Ordering::Relaxed);
+        scan_state.store(state::IDLE, Ordering::Relaxed);
 
         duplicates
     });
@@ -85,7 +87,7 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
 
 #[tauri::command]
 async fn cancel(state: State<'_, AppState>) -> Result<(), ()> {
-    state.cancelled.store(true, Ordering::Relaxed);
+    state.scan_state.store(state::CANCELLED, Ordering::Relaxed);
 
     Ok(())
 }
@@ -116,7 +118,7 @@ pub fn run() {
                 std::thread::spawn(|| handle.blocking_run(move |msg| logger(msg, &app_handle)));
             let appdata = AppState {
                 sender: Mutex::new(Some(sender)),
-                cancelled: Arc::new(AtomicBool::new(false)),
+                scan_state: Arc::new(AtomicU8::new(state::IDLE)),
                 logger_thread: Mutex::new(Some(logger_thread)),
             };
             app.manage(appdata);
@@ -137,8 +139,15 @@ pub fn run() {
 
                 println!("prevented exit.");
                 let state: State<AppState> = handle.state();
-                state.cancelled.store(true, Ordering::Relaxed);
+                println!("sent out signal to shut down.");
+                state.scan_state.store(state::CANCELLED, Ordering::Relaxed);
 
+                println!("waiting for threads to shut down.");
+                while state.scan_state.load(Ordering::Relaxed) != state::IDLE {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+
+                println!("dropping live communications.");
                 drop(state.sender.lock().unwrap().take());
                 if let Some(thread) = state.logger_thread.lock().unwrap().take() {
                     thread.join().expect("logger thread panicked.");
