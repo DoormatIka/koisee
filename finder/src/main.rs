@@ -21,7 +21,7 @@ fn test_downloads() {
     let dir = "/home/mualice/Downloads/";
     let mut finder = finder::HammingClustererFinder::new(sender.clone());
 
-    finder.insert_directory(dir);
+    finder.scan_directory(dir);
     let best_matches = finder.get_clustered_duplicates(10);
     println!(
         "best matches found in Downloads folder ({:#?})",

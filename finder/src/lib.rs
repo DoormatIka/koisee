@@ -3,8 +3,6 @@ pub mod logger;
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
     use image;
     use img_hash::{self, HasherConfig};
 

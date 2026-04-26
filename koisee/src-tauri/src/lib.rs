@@ -9,7 +9,7 @@ use finder::{
     logger::{LogMsg, LoggerHandler, LoggerSender},
 };
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, RunEvent, State};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct ImageData {
@@ -26,6 +26,7 @@ pub struct MatchItem {
 struct AppState {
     sender: Mutex<Option<LoggerSender>>,
     cancelled: Arc<AtomicBool>,
+    logger_thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 #[tauri::command]
@@ -51,7 +52,6 @@ fn remap_hash_into_img(e: Vec<Vec<PerceptualHash>>) -> Vec<Vec<ImageData>> {
 
 #[tauri::command]
 async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageData>>, String> {
-    print!("{}", dir);
     let input_path = Path::new(&dir);
     if !input_path.is_dir() {
         return Err(String::from(
@@ -67,10 +67,12 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
     let cancelled = state.cancelled.clone();
 
     let handle = tokio::task::spawn_blocking(move || {
-        let mut clusterer = HammingClustererFinder::new(sender, cancelled);
+        let mut clusterer = HammingClustererFinder::new(sender, cancelled.clone());
         clusterer.scan_directory(dir);
+        let duplicates = clusterer.get_clustered_duplicates(5); // takes a long while.
+        cancelled.store(false, Ordering::Relaxed);
 
-        clusterer.get_clustered_duplicates(5) // takes a long while.
+        duplicates
     });
 
     let res = handle
@@ -81,38 +83,47 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
     res
 }
 
-fn logger(msg: &LogMsg) {
-    match msg {
-        LogMsg::Info(s) => println!("[INFO]: {}", s),
-        LogMsg::Hash(s) => println!("[HASHING] \"{}\"", s),
-        LogMsg::Decoding(s) => println!("[DECODING] \"{}\"", s),
-        LogMsg::Finished(s) => println!("   [FINISHED] \"{}\"", s),
-        LogMsg::ImageTotal(n) => println!("[TOTAL] \"{}\"", n),
-        LogMsg::Error(err) => println!("[ERR] {}", err),
-    }
+#[tauri::command]
+async fn cancel(state: State<'_, AppState>) -> Result<(), ()> {
+    state.cancelled.store(true, Ordering::Relaxed);
+
+    Ok(())
+}
+
+fn logger(msg: &LogMsg, handle: &AppHandle) {
+    let _ = match msg {
+        LogMsg::Info(s) => handle.emit("log:info", s),
+        LogMsg::Decoding(s) => handle.emit("file:decoding", s),
+        LogMsg::Hash(s) => handle.emit("file:hash", s),
+        LogMsg::Finished(s) => handle.emit("file:finished", s),
+        LogMsg::ImageTotal(n) => handle.emit("file:total", n),
+        LogMsg::FileError(file, err) => handle.emit("file:error", (file, err)),
+        LogMsg::Error(err) => handle.emit("error", err),
+    };
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (handle, sender) = LoggerHandler::new();
-    let logger_thread = std::thread::spawn(|| handle.blocking_run(logger));
 
-    let mut logger_thread = Some(logger_thread);
     let mut shutting_down = false;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
+            let app_handle = app.handle().clone();
+            let logger_thread =
+                std::thread::spawn(|| handle.blocking_run(move |msg| logger(msg, &app_handle)));
             let appdata = AppState {
-                sender: Mutex::new(Some(sender.clone())),
+                sender: Mutex::new(Some(sender)),
                 cancelled: Arc::new(AtomicBool::new(false)),
+                logger_thread: Mutex::new(Some(logger_thread)),
             };
             app.manage(appdata);
-            drop(sender);
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![scan, remove_file])
+        .invoke_handler(tauri::generate_handler![scan, cancel, remove_file])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(move |handle, event| match event {
@@ -129,8 +140,7 @@ pub fn run() {
                 state.cancelled.store(true, Ordering::Relaxed);
 
                 drop(state.sender.lock().unwrap().take());
-
-                if let Some(thread) = logger_thread.take() {
+                if let Some(thread) = state.logger_thread.lock().unwrap().take() {
                     thread.join().expect("logger thread panicked.");
                 }
 

@@ -7,6 +7,7 @@ pub enum LogMsg {
     Decoding(String),
     Hash(String),
     Finished(String),
+    FileError(String, String),
     ImageTotal(usize),
 }
 
@@ -30,6 +31,9 @@ impl LoggerSender {
     }
     pub fn total(&self, total: impl Into<usize>) {
         let _ = self.tx.send(LogMsg::ImageTotal(total.into()));
+    }
+    pub fn file_fail(&self, path: impl Into<String>, err: String) {
+        let _ = self.tx.send(LogMsg::FileError(path.into(), err));
     }
 
     pub fn warn(&self, msg: impl Into<String>) {

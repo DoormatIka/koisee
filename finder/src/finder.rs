@@ -3,6 +3,8 @@ use jwalk::WalkDir;
 use rayon::prelude::*;
 use std::collections::{BinaryHeap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{cmp::Reverse, path::Path};
 
 use image::{GenericImageView, ImageError};
@@ -12,9 +14,9 @@ use crate::logger::LoggerSender;
 
 #[derive(Debug, Clone)]
 pub struct PerceptualHash {
-    path: String,
+    pub path: String,
+    pub dimensions: (u32, u32),
     hash: ImageHash,
-    dimensions: (u32, u32),
 }
 impl PerceptualHash {
     pub fn new(path: String, hash: ImageHash, dimensions: (u32, u32)) -> Self {
@@ -96,10 +98,11 @@ pub struct HammingClustererFinder {
     hasher: Hasher,
     buckets: Vec<HammingBucket>,
     sender: LoggerSender,
+    cancelled: Arc<AtomicBool>,
 }
 
 impl HammingClustererFinder {
-    pub fn new(sender: LoggerSender) -> Self {
+    pub fn new(sender: LoggerSender, cancelled: Arc<AtomicBool>) -> Self {
         let hasher = HasherConfig::new().to_hasher();
         let bucket_count = 8;
         let mut buckets: Vec<HammingBucket> = Vec::with_capacity(bucket_count as usize);
@@ -112,24 +115,29 @@ impl HammingClustererFinder {
             hasher,
             buckets,
             sender,
+            cancelled,
         }
     }
 
-    pub fn insert_directory(&mut self, directory: impl AsRef<Path>) {
+    pub fn scan_directory(&mut self, directory: impl AsRef<Path>) {
         let hasher_config = HasherConfig::new().resize_filter(FilterType::CatmullRom);
-        let files: Vec<_> = list_all_files(directory).collect();
+        let cancelled = self.cancelled.clone();
+        let files: Vec<_> = self.list_all_files(directory).collect();
+
         self.sender.total(files.len());
 
         self.sender
             .info(format!("Importing all images in directory."));
 
-        let results: Vec<Result<PerceptualHash, ImageError>> = files
+        let results: Vec<Result<PerceptualHash, (String, ImageError)>> = files
             .par_iter()
+            .take_any_while(move |_| !cancelled.load(Ordering::Relaxed))
             .map(|file| {
                 let hasher = hasher_config.to_hasher();
 
                 self.sender.decoding(file.to_string_lossy());
-                let img = image::open(&file)?;
+                let img =
+                    image::open(&file).map_err(|s| (file.to_string_lossy().into_owned(), s))?;
 
                 self.sender.hash(file.to_string_lossy());
                 let hash = hasher.hash_image(&img);
@@ -147,7 +155,7 @@ impl HammingClustererFinder {
         for result in results {
             match result {
                 Ok(r) => self.insert(r),
-                Err(err) => self.sender.warn(err.to_string()),
+                Err((path, err)) => self.sender.file_fail(path, err.to_string()),
             };
         }
     }
@@ -155,9 +163,13 @@ impl HammingClustererFinder {
     pub fn get_clustered_duplicates(&self, threshold: u32) -> Vec<Vec<PerceptualHash>> {
         let mut nearest_matches: Vec<Vec<PerceptualHash>> = vec![];
         let mut seen_path = HashSet::<String>::new();
+        let cancelled = self.cancelled.clone();
 
         for container in self.buckets.iter() {
             for img in container.items.iter() {
+                if cancelled.load(Ordering::Relaxed) {
+                    return vec![];
+                }
                 if seen_path.contains(&img.path) {
                     continue;
                 }
@@ -261,6 +273,25 @@ impl HammingClustererFinder {
             self.buckets[idx].items.push(item);
         }
     }
+
+    fn list_all_files(&self, path: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
+        let cancelled = self.cancelled.clone();
+        WalkDir::new(path)
+            .into_iter()
+            .take_while(move |_| !cancelled.load(Ordering::Relaxed))
+            .filter_map(move |v| match v {
+                Ok(e) => {
+                    let p = e.path();
+                    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+                    matches!(ext, "jpg" | "jpeg" | "png" | "webp").then_some(p)
+                }
+                Err(err) => {
+                    println!("[FILE-ERR]: {}", err);
+                    None
+                }
+            })
+    }
 }
 
 impl fmt::Debug for HammingClustererFinder {
@@ -270,19 +301,4 @@ impl fmt::Debug for HammingClustererFinder {
             .field("buckets", &self.buckets)
             .finish()
     }
-}
-
-fn list_all_files(path: impl AsRef<Path>) -> impl Iterator<Item = PathBuf> {
-    WalkDir::new(path).into_iter().filter_map(|v| match v {
-        Ok(e) => {
-            let p = e.path();
-            let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
-
-            matches!(ext, "jpg" | "jpeg" | "png" | "webp").then_some(p)
-        }
-        Err(err) => {
-            println!("[FILE-ERR]: {}", err);
-            None
-        }
-    })
 }
