@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from "@iconify/svelte";
 	import FilePicker from "$lib/components/FilePicker.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 
@@ -61,6 +62,12 @@
     });
 	});
 	listen<ImageTotal>("file:total", (n) => total = n.payload);
+	listen("process:finished", () => {
+		progress_items.set(new Map());
+		images_processed = 0;
+		images_error = 0;
+		total = 0;
+	});
 </script>
 
 <main class="flex flex-col h-full w-full gap-4 p-3">
@@ -70,9 +77,19 @@
 		<div class="flex flex-row flex-1 gap-3">
 			<FilePicker />
 		</div>
-		<div>
-			<p>Images processed: (({images_processed} SUCCESS, {images_error} FAIL)/{total})</p>
-			<p>Threads used: {$progress_items.size}</p>
+		<div class="flex gap-2">
+			<span class="flex gap-1">
+				{images_processed}/{total}
+				<Icon width={25} height={25} inline icon="material-symbols:check-circle" />
+			</span>
+			<span class="flex gap-1">
+				{images_error}
+				<Icon width={25} height={25} inline icon="material-symbols:error" />
+			</span>
+			<span class="flex gap-1">
+				{$progress_items.size}
+				<Icon width={25} height={25} inline icon="material-symbols:search-gear" />
+			</span>
 		</div>
 	</div>
 	

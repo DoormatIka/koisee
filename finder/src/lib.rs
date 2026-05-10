@@ -1,5 +1,6 @@
 pub mod finder;
 pub mod logger;
+pub mod state;
 
 #[cfg(test)]
 mod tests {

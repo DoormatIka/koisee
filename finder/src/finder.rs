@@ -1,16 +1,18 @@
 use core::fmt;
+use image::error::DecodingError;
 use jwalk::WalkDir;
 use rayon::prelude::*;
 use std::collections::{BinaryHeap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::{cmp::Reverse, path::Path};
 
 use image::{GenericImageView, ImageError};
 use img_hash::{FilterType, Hasher, HasherConfig, ImageHash};
 
 use crate::logger::LoggerSender;
+use crate::state;
 
 #[derive(Debug, Clone)]
 pub struct PerceptualHash {
@@ -98,11 +100,11 @@ pub struct HammingClustererFinder {
     hasher: Hasher,
     buckets: Vec<HammingBucket>,
     sender: LoggerSender,
-    cancelled: Arc<AtomicBool>,
+    cancelled: Arc<AtomicU8>,
 }
 
 impl HammingClustererFinder {
-    pub fn new(sender: LoggerSender, cancelled: Arc<AtomicBool>) -> Self {
+    pub fn new(sender: LoggerSender, cancelled: Arc<AtomicU8>) -> Self {
         let hasher = HasherConfig::new().to_hasher();
         let bucket_count = 8;
         let mut buckets: Vec<HammingBucket> = Vec::with_capacity(bucket_count as usize);
@@ -122,6 +124,7 @@ impl HammingClustererFinder {
     pub fn scan_directory(&mut self, directory: impl AsRef<Path>) {
         let hasher_config = HasherConfig::new().resize_filter(FilterType::CatmullRom);
         let cancelled = self.cancelled.clone();
+        let map_cancelled = self.cancelled.clone();
         let files: Vec<_> = self.list_all_files(directory).collect();
 
         self.sender.total(files.len());
@@ -131,19 +134,28 @@ impl HammingClustererFinder {
 
         let results: Vec<Result<PerceptualHash, (String, ImageError)>> = files
             .par_iter()
-            .take_any_while(move |_| !cancelled.load(Ordering::Relaxed))
+            .take_any_while(move |_| cancelled.load(Ordering::Relaxed) != state::CANCELLED)
             .map(|file| {
                 let hasher = hasher_config.to_hasher();
+
+                check_if_cancelled(map_cancelled.clone())?;
 
                 self.sender.decoding(file.to_string_lossy());
                 let img =
                     image::open(&file).map_err(|s| (file.to_string_lossy().into_owned(), s))?;
 
+                check_if_cancelled(map_cancelled.clone())?;
+
                 self.sender.hash(file.to_string_lossy());
                 let hash = hasher.hash_image(&img);
 
+                check_if_cancelled(map_cancelled.clone())?;
+
                 self.sender.finished(file.to_string_lossy());
                 let dimensions = img.dimensions();
+
+                check_if_cancelled(map_cancelled.clone())?;
+
                 Ok(PerceptualHash {
                     path: file.to_string_lossy().into_owned(),
                     hash,
@@ -167,7 +179,7 @@ impl HammingClustererFinder {
 
         for container in self.buckets.iter() {
             for img in container.items.iter() {
-                if cancelled.load(Ordering::Relaxed) {
+                if cancelled.load(Ordering::Relaxed) != state::CANCELLED {
                     return vec![];
                 }
                 if seen_path.contains(&img.path) {
@@ -278,7 +290,7 @@ impl HammingClustererFinder {
         let cancelled = self.cancelled.clone();
         WalkDir::new(path)
             .into_iter()
-            .take_while(move |_| !cancelled.load(Ordering::Relaxed))
+            .take_while(move |_| cancelled.load(Ordering::Relaxed) != state::CANCELLED)
             .filter_map(move |v| match v {
                 Ok(e) => {
                     let p = e.path();
@@ -300,5 +312,17 @@ impl fmt::Debug for HammingClustererFinder {
             .field("hasher", &String::from("The hasher."))
             .field("buckets", &self.buckets)
             .finish()
+    }
+}
+
+fn check_if_cancelled(map_cancelled: Arc<AtomicU8>) -> Result<(), (String, ImageError)> {
+    let is_cancelled = map_cancelled.load(Ordering::Relaxed) == state::CANCELLED;
+    if is_cancelled {
+        let img_err = ImageError::Decoding(DecodingError::from_format_hint(
+            image::error::ImageFormatHint::Unknown,
+        ));
+        return Err((String::from("Cancelled!"), img_err));
+    } else {
+        return Ok(());
     }
 }

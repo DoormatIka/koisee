@@ -1,6 +1,9 @@
+use std::sync::{Arc, atomic::AtomicU8};
+
 use img_finder::{
     finder,
     logger::{LogMsg, LoggerHandler},
+    state,
 };
 
 fn logger(msg: &LogMsg) {
@@ -11,6 +14,7 @@ fn logger(msg: &LogMsg) {
         LogMsg::Finished(s) => println!("   [FINISHED] \"{}\"", s),
         LogMsg::ImageTotal(n) => println!("[TOTAL] \"{}\"", n),
         LogMsg::Error(err) => println!("[ERR] {}", err),
+        LogMsg::FileError(file, err) => println!("[FILE-ERR] {} {}", file, err),
     }
 }
 
@@ -19,7 +23,8 @@ fn test_downloads() {
     let logger_thread = std::thread::spawn(|| handle.blocking_run(logger));
 
     let dir = "/home/mualice/Downloads/";
-    let mut finder = finder::HammingClustererFinder::new(sender.clone());
+    let cancel_flag = Arc::new(AtomicU8::new(state::IDLE));
+    let mut finder = finder::HammingClustererFinder::new(sender.clone(), cancel_flag);
 
     finder.scan_directory(dir);
     let best_matches = finder.get_clustered_duplicates(10);

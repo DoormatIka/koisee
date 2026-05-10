@@ -25,10 +25,4 @@ though images are the main focus!
 
 ## building
 
-dependencies: python3.12, uv, rust, npm, nodejs
-
-run `python3 build.py` to build this project.
-
-- `--skip-nuitka` - skip nuitka compilation
-- `--skip-tauri` - skip tauri compilation
-- `--run-tauri` - run tauri application
+do `npm run tauri build`

@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{fs, path::Path};
@@ -86,8 +86,15 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
 }
 
 #[tauri::command]
-async fn cancel(state: State<'_, AppState>) -> Result<(), ()> {
+async fn cancel(state: State<'_, AppState>, handle: AppHandle) -> Result<(), ()> {
     state.scan_state.store(state::CANCELLED, Ordering::Relaxed);
+    let _ = handle.emit("process:cancelling", 0);
+
+    while state.scan_state.load(Ordering::Relaxed) != state::IDLE {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+
+    let _ = handle.emit("process:finished", 0);
 
     Ok(())
 }
@@ -95,9 +102,18 @@ async fn cancel(state: State<'_, AppState>) -> Result<(), ()> {
 fn logger(msg: &LogMsg, handle: &AppHandle) {
     let _ = match msg {
         LogMsg::Info(s) => handle.emit("log:info", s),
-        LogMsg::Decoding(s) => handle.emit("file:decoding", s),
-        LogMsg::Hash(s) => handle.emit("file:hash", s),
-        LogMsg::Finished(s) => handle.emit("file:finished", s),
+        LogMsg::Decoding(s) => {
+            // println!("decoding.");
+            handle.emit("file:decoding", s)
+        }
+        LogMsg::Hash(s) => {
+            // println!("hashing.");
+            handle.emit("file:hash", s)
+        }
+        LogMsg::Finished(s) => {
+            // println!("finished.");
+            handle.emit("file:finished", s)
+        }
         LogMsg::ImageTotal(n) => handle.emit("file:total", n),
         LogMsg::FileError(file, err) => handle.emit("file:error", (file, err)),
         LogMsg::Error(err) => handle.emit("error", err),
