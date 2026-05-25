@@ -52,7 +52,13 @@ fn remap_hash_into_img(e: Vec<Vec<PerceptualHash>>) -> Vec<Vec<ImageData>> {
 }
 
 #[tauri::command]
-async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageData>>, String> {
+async fn scan(
+    state: State<'_, AppState>,
+    handle: AppHandle,
+    dir: String,
+) -> Result<Vec<Vec<ImageData>>, String> {
+    let _ = handle.emit("process:start", 0);
+
     let input_path = Path::new(&dir);
     if !input_path.is_dir() {
         return Err(String::from(
@@ -70,16 +76,29 @@ async fn scan(state: State<'_, AppState>, dir: String) -> Result<Vec<Vec<ImageDa
 
     let handle = tokio::task::spawn_blocking(move || {
         let mut clusterer = HammingClustererFinder::new(sender, scan_state.clone());
+
+        if scan_state.load(Ordering::Relaxed) == state::CANCELLED {
+            scan_state.store(state::IDLE, Ordering::Relaxed);
+            return None;
+        }
+
         clusterer.scan_directory(dir);
+
+        if scan_state.load(Ordering::Relaxed) == state::CANCELLED {
+            scan_state.store(state::IDLE, Ordering::Relaxed);
+            return None;
+        }
+
         let duplicates = clusterer.get_clustered_duplicates(5); // takes a long while.
         scan_state.store(state::IDLE, Ordering::Relaxed);
 
-        duplicates
+        Some(duplicates)
     });
 
     let res = handle
         .await
         .map_err(|e| e.to_string())
+        .and_then(|opt| opt.ok_or_else(|| "cancelled".to_string()))
         .map(remap_hash_into_img);
 
     res
@@ -94,6 +113,8 @@ async fn cancel(state: State<'_, AppState>, handle: AppHandle) -> Result<(), ()>
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
+    state.scan_state.store(state::IDLE, Ordering::Relaxed);
+
     let _ = handle.emit("process:finished", 0);
 
     Ok(())
@@ -101,6 +122,7 @@ async fn cancel(state: State<'_, AppState>, handle: AppHandle) -> Result<(), ()>
 
 fn logger(msg: &LogMsg, handle: &AppHandle) {
     let _ = match msg {
+        LogMsg::Starting => handle.emit("process:start", ""),
         LogMsg::Info(s) => handle.emit("log:info", s),
         LogMsg::Decoding(s) => {
             // println!("decoding.");
@@ -155,12 +177,15 @@ pub fn run() {
 
                 println!("prevented exit.");
                 let state: State<AppState> = handle.state();
-                println!("sent out signal to shut down.");
-                state.scan_state.store(state::CANCELLED, Ordering::Relaxed);
 
-                println!("waiting for threads to shut down.");
-                while state.scan_state.load(Ordering::Relaxed) != state::IDLE {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                if state.scan_state.load(Ordering::Relaxed) != state::IDLE {
+                    println!("sent out signal to shut down.");
+                    state.scan_state.store(state::CANCELLED, Ordering::Relaxed);
+
+                    println!("waiting for threads to shut down.");
+                    while state.scan_state.load(Ordering::Relaxed) != state::IDLE {
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                    }
                 }
 
                 println!("dropping live communications.");
