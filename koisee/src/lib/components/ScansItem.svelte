@@ -6,7 +6,6 @@
 
 	let { data }: { data: ImageData[] } = $props();
 	$effect(() => { $scanResults; });
-	scanResults.subscribe(() => console.log("changed.."));
 	function toggle(data: ImageData) {
 		scanResults.update(groups =>
 			groups!.map(group =>
