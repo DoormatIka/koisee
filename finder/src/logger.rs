@@ -3,6 +3,7 @@ use std::sync::mpsc;
 #[derive(Debug)]
 pub enum LogMsg {
     Info(String),
+    Starting,
     Error(String),
     Decoding(String),
     Hash(String),
@@ -17,6 +18,9 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
+    pub fn start(&self) {
+        let _ = self.tx.send(LogMsg::Starting);
+    }
     pub fn info(&self, details: impl Into<String>) {
         let _ = self.tx.send(LogMsg::Info(details.into()));
     }

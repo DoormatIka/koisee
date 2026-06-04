@@ -8,6 +8,7 @@ use img_finder::{
 
 fn logger(msg: &LogMsg) {
     match msg {
+        LogMsg::Starting => println!("[STARTING]"),
         LogMsg::Info(s) => println!("[INFO]: {}", s),
         LogMsg::Hash(s) => println!("[HASHING] \"{}\"", s),
         LogMsg::Decoding(s) => println!("[DECODING] \"{}\"", s),

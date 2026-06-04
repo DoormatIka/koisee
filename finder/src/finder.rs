@@ -132,31 +132,35 @@ impl HammingClustererFinder {
         self.sender
             .info(format!("Importing all images in directory."));
 
-        let results: Vec<Result<PerceptualHash, (String, ImageError)>> = files
+        let results: Vec<PerceptualHash> = files
             .par_iter()
             .take_any_while(move |_| cancelled.load(Ordering::Relaxed) != state::CANCELLED)
-            .map(|file| {
+            .filter_map(|file| {
                 let hasher = hasher_config.to_hasher();
 
-                check_if_cancelled(map_cancelled.clone())?;
+                check_if_cancelled(map_cancelled.clone()).ok()?;
 
                 self.sender.decoding(file.to_string_lossy());
-                let img =
-                    image::open(&file).map_err(|s| (file.to_string_lossy().into_owned(), s))?;
+                let img = image::open(&file).map_err(|s| (file.to_string_lossy().into_owned(), s));
+                let Ok(img) = img else {
+                    let (path, err) = img.unwrap_err();
+                    self.sender.file_fail(path, err.to_string());
+                    return None;
+                };
 
-                check_if_cancelled(map_cancelled.clone())?;
+                check_if_cancelled(map_cancelled.clone()).ok()?;
 
                 self.sender.hash(file.to_string_lossy());
                 let hash = hasher.hash_image(&img);
 
-                check_if_cancelled(map_cancelled.clone())?;
+                check_if_cancelled(map_cancelled.clone()).ok()?;
 
                 self.sender.finished(file.to_string_lossy());
                 let dimensions = img.dimensions();
 
-                check_if_cancelled(map_cancelled.clone())?;
+                check_if_cancelled(map_cancelled.clone()).ok()?;
 
-                Ok(PerceptualHash {
+                Some(PerceptualHash {
                     path: file.to_string_lossy().into_owned(),
                     hash,
                     dimensions,
@@ -165,10 +169,7 @@ impl HammingClustererFinder {
             .collect();
 
         for result in results {
-            match result {
-                Ok(r) => self.insert(r),
-                Err((path, err)) => self.sender.file_fail(path, err.to_string()),
-            };
+            self.insert(result);
         }
     }
 
@@ -179,7 +180,7 @@ impl HammingClustererFinder {
 
         for container in self.buckets.iter() {
             for img in container.items.iter() {
-                if cancelled.load(Ordering::Relaxed) != state::CANCELLED {
+                if cancelled.load(Ordering::Relaxed) == state::CANCELLED {
                     return vec![];
                 }
                 if seen_path.contains(&img.path) {
