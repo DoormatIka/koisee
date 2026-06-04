@@ -1,0 +1,11 @@
+[package]
+name = "img-finder"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+image = "0.23"
+img_hash = "3.0"
+rand = "0.8"
+jwalk = "0.8"
+rayon = "1.12.0"
