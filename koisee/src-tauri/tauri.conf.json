@@ -18,8 +18,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: asset:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: asset: https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; img-src 'self' asset: data: blob:;",
-      "assetProtocol": {
+	  "csp": "default-src 'self' ipc: asset:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: asset: http://ipc.localhost http://localhost ws://localhost wss://localhost https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; img-src 'self' asset: http://asset.localhost data: blob:;",
+	  "assetProtocol": {
         "enable": true,
         "scope": ["/**"]
       }
