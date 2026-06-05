@@ -23,7 +23,9 @@
 		});
 	}
 </script>
-
+  
+{#if !$scanResults || $scanResults.length > 0}
+	
 <div class="w-full h-full">
 	{#each $scanResults ?? [] as data, i}
 		<!-- work on the delete button that grabs selected from scanResults and deletes them -->
@@ -40,3 +42,6 @@
 		</form>
 	{/each}
 </div>
+
+{/if}
+

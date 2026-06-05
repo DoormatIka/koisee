@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost",
+      "csp": "default-src 'self' ipc: asset:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: asset: https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; img-src 'self' asset: data: blob:;",
       "assetProtocol": {
         "enable": true,
         "scope": ["/**"]

@@ -63,16 +63,30 @@ export function assignTotal(n: number) {
   total = n;
 }
 
-export function overlayColor(index: number): string {
+export function progressColor(index: number): string {
   // i know we can do some gradient calculation here
   // between two colors but i am lazy.
   switch (index) {
     case 0:
-      return "border-gray-500 brightness-20";
+      return "border-gray-500 brightness-70";
     case 1:
-      return "border-blue-500 brightness-70";
+      return "border-blue-500 brightness-100";
     case 2:
       return "border-green-300";
+    default:
+      return "";
+  }
+}
+export function progressText(index: number): string {
+  // i know we can do some gradient calculation here
+  // between two colors but i am lazy.
+  switch (index) {
+    case 0:
+      return "Reading";
+    case 1:
+      return "Hashing";
+    case 2:
+      return "Pushing";
     default:
       return "";
   }
