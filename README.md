@@ -17,6 +17,7 @@ this is also my first time making a multi-language application.
 koisee wants to:
 
 - support gifs, videos and audio
+- use neural networks for more accurate matching
 - becoming faster and less memory intensive
 - learn how to use profilers and flamegraphs for the above...
 - have CI/CD and automated testing..
