@@ -10,8 +10,6 @@
 
 she's still learning, so she isn't available yet... please wait warmly while she's preparing
 
-this is also my first time making a multi-language application.
-
 ## future...
 
 koisee wants to:
@@ -23,6 +21,11 @@ koisee wants to:
 - have CI/CD and automated testing..
 
 though images are the main focus!
+
+## limitations.
+
+matching gets slower as more images (5,000+) gets scanned since this is using a coarse clustering technique + brute force.
+This isn't the final implementation, this app is experimental.
 
 ## building
 
