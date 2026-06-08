@@ -6,7 +6,7 @@
 
 ## what is this?
 
-**koisee** is a small, experimental tool that helps you find duplicate or similar images in folders.
+**koisee** is a small, fairly fast, and experimental tool that helps you find duplicate or similar images in folders.
 
 she's still learning, so she isn't available yet... please wait warmly while she's preparing
 
